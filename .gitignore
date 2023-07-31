@@ -2,3 +2,5 @@
 src/__pycache__
 src/yolov7.pt
 src/yolov7/traced_model.pt
+src/traced_model.pt
+src/Feature Map 73_screenshot_31.07.2023.png
