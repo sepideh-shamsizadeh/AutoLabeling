@@ -107,10 +107,10 @@ def detect_person(img0, model):
                     label = f'{names[int(cls)]} {conf:.2f}'
                     plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
                     poses.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
-    cv2.imshow("image", img0)
-    cv2.imwrite('/home/sepid/Pictures/output.jpg', img0)
-    cv2.waitKey(0)
-    print(poses)
+    # cv2.imshow("image", img0)
+    # cv2.imwrite('/home/sepid/Pictures/output.jpg', img0)
+    # cv2.waitKey(0)
+    # print(poses)
     return poses
 
 
