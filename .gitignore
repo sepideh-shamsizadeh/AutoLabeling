@@ -15,4 +15,8 @@ src/LICENSE
 src/Readme.md
 src/Weights-20230803T150538Z-001.zip
 src/Weights-20230803T150538Z-001/
+.catkin_workspace
+build/
+devel/
+images/
 

@@ -124,14 +124,24 @@ def counter():
         num += 1
 
 
-def check_one_label(org_detected, sides_detected, positions_people):
+def check_one_label(org_detected, sides_detected):
     people_detected = []
     boundings = []
     sorted_list = sorted(org_detected, key=lambda x: x[0])
     for value in sorted_list:
         if 0 <= value[0] < 240 or 1680 <= value[0] <= 1920:
-            bounding_boxes = sides_detected['back']['bounding']
+            bounding_boxes = sides_detected['back']['bounding_boxes']
             positions = sides_detected['back']['positions']
+        elif 240 <= value[0] < 720:
+            bounding_boxes = sides_detected['left']['bounding_boxes']
+            positions = sides_detected['left']['positions']
+        elif 720 <= value[0] < 1200:
+            bounding_boxes = sides_detected['front']['bounding_boxes']
+            positions = sides_detected['front']['positions']
+        elif 1200 <= value[0] < 1680:
+            bounding_boxes = sides_detected['right']['bounding_boxes']
+            positions = sides_detected['right']['positions']
+
     return people_detected, boundings
 
 
@@ -464,7 +474,7 @@ if __name__ == '__main__':
     filters = []
     tracks = {}
     current_object_id = 0
-    galleries = []
+    galleries = {}
     scan = []
     with open('/home/sepid/workspace/Thesis/GuidingRobot/data1/scan.csv', 'r') as file:
         # Create a CSV reader object
@@ -557,7 +567,7 @@ if __name__ == '__main__':
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['left']['positions'] = pose
-            bounding_boxs, measurements = check_one_label(detected_org, dsides, people)
+            bounding_boxs, measurements = check_one_label(detected_org, dsides)
             frame_num = next(counter_gen)
             pp_data = []
             if frame_num == 0:
@@ -589,7 +599,10 @@ if __name__ == '__main__':
                     filters.append(filter_i)
                     preprocced_image = load_and_preprocess_image(image, bounding_boxs[object_id])
                     vect = extract_feature_single(model, preprocced_image)
-                    filters.embedded_feature = vect.view((-1)).numpy()
+                    vect_features = vect.view((-1)).numpy()
+                    filters.embedded_feature = vect_features
+                    galleries[object_id]['features'] = vect_features
+                    galleries[object_id]['position'] = (person[0], person[1])
             else:
                 # Predict the next state for each object
                 ids = []
