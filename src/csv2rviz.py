@@ -27,9 +27,9 @@ scan_msg.range_max = 25.0  # Set the maximum range value
 bridge = CvBridge()
 
 # Path to the folder containing images
-image_folder = 'images'  # Replace with your image folder path
+image_folder = './calibration_data/images'  # Replace with your image folder path
 
-csv_file_path = 'output.csv'
+csv_file_path = './calibration_data/output.csv'
 
 # Dictionary to store bag names as keys and laser range data as values
 bag_data = {}
