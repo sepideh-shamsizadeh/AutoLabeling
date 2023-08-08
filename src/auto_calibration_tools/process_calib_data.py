@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from scipy.spatial.distance import cdist
 from scipy.optimize import minimize
+import cv2
 
 from read_calib_data import RangeImagePublisher
 
@@ -261,6 +262,13 @@ def process(ranges, image, laser_spec):
     manager = plt.get_current_fig_manager()
     manager.full_screen_toggle()
     plt.legend()
+
+    # Convert Cartesian to polar coordinates
+    cartesian_points = np.array(final_point)
+    polar_coordinates = cartesian_to_polar(cartesian_points)
+
+    print(polar_coordinates)
+
     plt.show()
 
     if min_dist < 0.180:
@@ -269,6 +277,106 @@ def process(ranges, image, laser_spec):
         print("Confidence is too low! Discard the detection...")
         return None
 
+# def cartesian_to_polar(cartesian_points):
+#     x, y = cartesian_points[:, 0], cartesian_points[:, 1]
+#     angles = np.arctan2(y, x)  # Calculate angles in radians
+#     angles_deg = np.degrees(angles)  # Convert angles to degrees
+#
+#     # Map angles to the [-180°, +180°] range
+#     angles_deg = (angles_deg + 180) % 360 - 180
+#
+#     # Calculate magnitudes (distances)
+#     magnitudes = np.sqrt(x**2 + y**2)
+#
+#     return np.column_stack((angles_deg, magnitudes))
+
+def cartesian_to_polar(cartesian_points):
+
+    x, y = cartesian_points[:, 0], cartesian_points[:, 1]
+    angles = np.arctan2(y, x)  # Calculate angles in radians
+    angles_deg = np.degrees(angles)  # Convert angles to degrees
+
+    # Map angles to the [0°, 360°] range
+    angles_deg = (angles_deg + 360) % 360
+
+    # Calculate magnitudes (distances)
+    magnitudes = np.sqrt(x**2 + y**2)
+
+    return np.column_stack((angles_deg, magnitudes))
+
+
+# def map_polar_to_horizontal_pixel(polar_points, image_width):
+#     angle_per_pixel = 360.0 / image_width
+#
+#     horizontal_pixel_coords = []
+#     for angle_deg, _ in polar_points:
+#         # Calculate horizontal pixel coordinate
+#         pixel_coord = int((angle_deg + 180) / angle_per_pixel)
+#         horizontal_pixel_coords.append(pixel_coord)
+#
+#     return horizontal_pixel_coords
+
+def map_polar_to_horizontal_pixel(polar_points, image_width):
+    angle_per_pixel = 360.0 / image_width
+
+    horizontal_pixel_coords = []
+    for angle_deg, _ in polar_points:
+        # Calculate horizontal pixel coordinate
+        pixel_coord = image_width - int(angle_deg / angle_per_pixel)
+        horizontal_pixel_coords.append(pixel_coord)
+
+    return horizontal_pixel_coords
+
+def process_image(cartesian_points, image, template=None):
+
+    # Convert Cartesian to polar coordinates
+    polar_coordinates = cartesian_to_polar(cartesian_points)
+
+    # Image width (number of pixels)
+    image_heigth, image_width, ch = image.shape
+
+    # Map polar coordinates to horizontal pixel coordinates
+    horizontal_pixel_coordinates = map_polar_to_horizontal_pixel(polar_coordinates, image_width)
+
+    print(horizontal_pixel_coordinates)
+
+    end = max(horizontal_pixel_coordinates[1], horizontal_pixel_coordinates[2])
+    start = min(horizontal_pixel_coordinates[1], horizontal_pixel_coordinates[2])
+
+    rescale = (end-start)//2
+
+    offset = 50
+
+    start = max(start-rescale-offset, 0)
+    end = min(end+rescale-offset, image_width-1)
+
+    # Crop a slice of the image using the horizontal pixel coordinates
+    cropped_image = image[500:,start:end]
+
+    # Display the original and cropped images
+    plt.subplot(1, 2, 1)
+    plt.imshow(image)
+    # only one line may be specified; full height
+    plt.axvline(x=start, color='blue')
+    plt.axvline(x=end, color='red')
+    plt.title("Original Image")
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(cropped_image)
+    plt.title("Cropped Image")
+
+    gray_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
+
+    # detect corners with the goodFeaturesToTrack function.
+    corners = cv2.goodFeaturesToTrack(gray_image, 6, 0.05, 10)
+    corners = np.int0(corners)
+
+    # Mark detected corners with red dots
+    plt.plot(corners[:,:, 1], corners[:,:, 0], 'r.', markersize=5)
+
+
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     csv_file_path = './calibration_data/output.csv'
@@ -280,5 +388,14 @@ if __name__ == "__main__":
     while cmd.lower() != 'q':
         scan, image = range_image_publisher.publish_next_scan_image()
         laser_spec = range_image_publisher.get_laser_specs()
-        process(scan, image, laser_spec)
+        laser_point = process(scan, image, laser_spec)
+
+        # laser_point = [
+        #     [ 2.30571884, -1.59577398],
+        #     [ 2.24146292, -1.34847935],
+        #     [ 2.03093913, -1.58731606] ]
+
+        if laser_point is not None:
+            process_image(np.array(laser_point), image)
+
         #cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
