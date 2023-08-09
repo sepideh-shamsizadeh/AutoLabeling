@@ -270,6 +270,7 @@ def process(ranges, image, laser_spec):
     # Convert Cartesian to polar coordinates
     cartesian_points = np.array(final_point)
     polar_coordinates = cartesian_to_polar(cartesian_points)
+    plt.title("DETECTION OF THE CORNERS IN THE LASER")
 
     print(polar_coordinates)
 
@@ -346,6 +347,7 @@ def process_image(cartesian_points, image, template_path=None):
     plt.imshow(image)
     plt.axvline(start, color='r')
     plt.axvline(end, color='r')
+    plt.title("SELECTED SLICE CONTAINING THE BOARD")
     plt.show()
 
     # Crop a slice of the image using the horizontal pixel coordinates
@@ -552,6 +554,7 @@ def process_image(cartesian_points, image, template_path=None):
 
 
     # Display the result
+    plt.title("CORNERS IN THE IMAGE")
     plt.subplot(1, 3, 1)
     plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
     plt.title('Detected Lines')
