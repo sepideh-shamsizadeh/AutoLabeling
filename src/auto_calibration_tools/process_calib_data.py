@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import numpy as np
@@ -10,8 +10,11 @@ import cv2
 
 from read_calib_data import RangeImagePublisher
 from image_similarity_measures.quality_metrics import *
-from sklearn.cluster import DBSCAN
-from copy import deepcopy
+from sklearn.cluster import DBSCAN, MeanShift
+
+import torch
+from torchvision.models.detection import fasterrcnn_resnet50_fpn
+import torchvision.transforms.functional as F
 
 def visualize_matching_result(point_cloud, template, optimal_translation, optimal_rotation):
     # Rotate the template by the optimal rotation
@@ -272,8 +275,6 @@ def process(ranges, image, laser_spec):
     polar_coordinates = cartesian_to_polar(cartesian_points)
     plt.title("DETECTION OF THE CORNERS IN THE LASER")
 
-    print(polar_coordinates)
-
     plt.show()
 
     if min_dist < 0.180:
@@ -289,7 +290,12 @@ def cartesian_to_polar(cartesian_points):
     angles_deg = np.degrees(angles)  # Convert angles to degrees
 
     # Map angles to the [0°, 360°] range
-    angles_deg = (angles_deg + 360) % 360
+    #angles_deg = (angles_deg + 360) % 360
+    offset = -50
+    for i in range(len(angles_deg)):
+        if angles_deg[i] < 0:
+            angles_deg[i] = 360 + angles_deg[i]
+            offset = 50
 
     # Calculate magnitudes (distances)
     magnitudes = np.sqrt(x**2 + y**2)
@@ -313,124 +319,93 @@ def are_angles_close(angle1, angle2, threshold):
     return angle_difference < threshold or angle_difference > np.pi - threshold
 
 
-def process_image(cartesian_points, image, template_path=None):
+def process_image(cartesian_points, image , detector=None):
 
-    # TO DO: CHECK MAPPING BETWEEN LASER AND PANORAMIC IMAGE
-    ################################################################
+    ############################################################################################
 
-    # Convert Cartesian to polar coordinates
-    polar_coordinates = cartesian_to_polar(cartesian_points)
+    #Detect board with the trained model
+    test_tensor = F.to_tensor(image).unsqueeze(0).cuda()
+    predictions = detector(test_tensor)[0]
 
-    # Image width (number of pixels)
-    image_heigth, image_width, ch = image.shape
+    # Find the index of the bounding box with the highest score
+    max_score_idx = torch.argmax(predictions['scores'])
 
-    # Map polar coordinates to horizontal pixel coordinates
-    horizontal_pixel_coordinates = map_polar_to_horizontal_pixel(polar_coordinates, image_width)
+    # Get the bounding box and score with the highest score
+    max_score_box = predictions['boxes'][max_score_idx].detach().cpu().numpy()
+    max_score = predictions['scores'][max_score_idx]
 
-    # TO DO: CHECK MAPPING BETWEEN LASER AND PANORAMIC IMAGE
-    ################################################################
+    # Enlarge the bounding box by a factor of 1.2 (adjust as needed)
+    enlargement_factor = 1.2
+    box = [
+        int(np.round(
+            max_score_box[0] - (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2)),
+        int(np.round(
+            max_score_box[1] - (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2)),
+        int(np.round(
+            max_score_box[2] + (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2)),
+        int(np.round(
+            max_score_box[3] + (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2)),
+    ]
 
-    print("******************************")
-    print(horizontal_pixel_coordinates)
-    print("******************************")
 
-    end = max(horizontal_pixel_coordinates[1], horizontal_pixel_coordinates[2])
-    start = min(horizontal_pixel_coordinates[1], horizontal_pixel_coordinates[2])
-
-    rescale = (end-start)//2
-
-    offset = 50
-
-    start = max(start-rescale-offset, 0)
-    end = min(end+rescale-offset, image_width-1)
-
-    plt.imshow(image)
-    plt.axvline(start, color='r')
-    plt.axvline(end, color='r')
-    plt.title("SELECTED SLICE CONTAINING THE BOARD")
-    plt.show()
+    #############################################################################################
 
     # Crop a slice of the image using the horizontal pixel coordinates
-    cropped_image = image[500:,start:end]
+    cropped_image = image[box[1]:box[3], box[0]:box[2]]
 
-    template = cv2.imread(template_path)
-    search_image = deepcopy(cropped_image)
-    s_image_heigth, s_image_width, ch = search_image.shape
-
-    # Get the width of the search image
-    template_width = template.shape[1]
-
-    # Calculate the new height for the template while maintaining the aspect ratio
-    image_aspect_ratio = search_image.shape[1] / search_image.shape[0]
-    new_image_height = int(template_width / image_aspect_ratio)
-
-    # Resize the template
-    search_image = cv2.resize(search_image, (template_width, new_image_height), interpolation=cv2.INTER_LANCZOS4)
-    #template = cv2.flip(template, 1)
-
-
-    rescale_factor_h =  s_image_heigth / new_image_height
-    rescale_factor_w =  s_image_width / template_width
-
-    # # Get dimensions of the search image and template
-    H, W, _ = search_image.shape
-    h, W_template, _ = template.shape
-
-    scores = []
-    max_score = 0
-    best_location = None
-    # Iterate through the search image with the template
-    for y in tqdm(range(H - h + 1)):
-        for x in range(W - W_template + 1):
-            # Crop a region from the search image for scoring
-            region = search_image[y:y + h, x:x + W_template]
-
-            # Calculate the score using your custom scoring function
-            score = psnr(region, template)
-            scores.append(score)
-
-            # If the current score is higher than the maximum score found so far
-            if score > max_score:
-                max_score = score
-                best_location = (x, y)
-
-    # Draw a rectangle around the location of the maximum score
-    print("max_score: ", max_score)
-    print("H: {} h {}".format(H, h) )
-    if best_location is not None:
-        x, y = best_location
-        top_left = (x, y)
-
-
-    scores = np.array(scores)
-    scores = scores / scores.sum()
-
-    prob = scores[y]
-    P = 0.05
-
-    i = 0
-    while prob < P and (y-i)>=0 and (y+i)<H:
-        i = i+1
-        prob += scores[y+i]
-        prob += scores[y-i]
-
-    # Determine the top-left corner of the matched region
-    h, w, c = template.shape
-
-    # Crop the matched region from the search image
-    cropped_region = search_image[y-i : y+i+h, :]
-
-    up_limit_roi = y-i
-
+    # Resize the cropped image to have a width of 250 pixels
+    new_width = 250
+    height, width, _ = cropped_image.shape
+    aspect_ratio = width / height
+    new_height = int(new_width / aspect_ratio)
+    cropped_image = cv2.resize(cropped_image, (new_width, new_height))
 
     # Convert the cropped region to grayscale
-    gray_cropped_region = cv2.cvtColor(cropped_region, cv2.COLOR_BGR2GRAY)
+    gray_cropped_region = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
 
     # Apply edge detection (e.g., Canny) to the grayscale image
     edges = cv2.Canny(gray_cropped_region, threshold1=50, threshold2=100, apertureSize=3)
 
     # Perform Hough Line Transform
     lines = cv2.HoughLines(edges, rho=3, theta=np.pi / 180, threshold=80)
+
+    ################################# VISUALIZATION
+
+    # Draw the detected lines on the cropped image
+    line_image = np.copy(cropped_image)
+    if lines is not None:
+        for line in lines:
+            rho, theta = line[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(line_image, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Draw lines in red
+
+    # Convert BGR to RGB for visualization with matplotlib
+    line_image_rgb = cv2.cvtColor(line_image, cv2.COLOR_BGR2RGB)
+
+    # Display the edge image and the cropped image with detected lines
+    plt.figure(figsize=(18, 9))
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(edges, cmap='gray')
+    plt.title('Edge Image')
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(line_image_rgb)
+    plt.title('Cropped Image with Detected Lines')
+    plt.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+    ###############################################
 
     # Merge lines with similar orientations and locations by averaging
     clustered_lines = []
@@ -467,6 +442,41 @@ def process_image(cartesian_points, image, template_path=None):
         avg_theta = np.mean(cluster_thetas)
         merged_lines.append((avg_rho, avg_theta))
 
+
+    ################################# VISUALIZATION
+
+    # Visualize the lines on the cropped region
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(line_image)
+    plt.title('Cropped Image')
+    plt.axis('off')
+
+    # Plot the detected lines
+    line_image = np.copy(cropped_image)
+    for line in merged_lines:
+        rho, theta = line
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
+        cv2.line(line_image, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Draw lines in red
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(line_image)
+        plt.title('Edges')
+        plt.axis('off')
+
+    plt.title('Detected Lines')
+    plt.axis('off')
+    plt.show()
+
+##################################
+
     # Find line intersections
     intersections = []
     for i in range(len(merged_lines)):
@@ -488,50 +498,122 @@ def process_image(cartesian_points, image, template_path=None):
     # Convert intersections to a numpy array
     intersection_points = np.array(intersections)
 
-    # Filter intersection points within the specified range
-    filtered_intersections = []
-    height, width = gray_cropped_region.shape  # Replace 'img' with the actual image variable
+    if len(intersection_points) == 0:
+        print("No intersections found!")
+        return None
 
-    for x, y in intersections:
-        if 0 <= x < width and 0 <= y < height:
+    # Define the cropped bounding box's top-left corner coordinates
+    cropped_top_left = (box[0], box[1])
+    # Calculate the scale factor used for resizing the cropped image
+    scale_factor = new_width / (box[2] - box[0])
+    # Initialize an array to store remapped corners in the original image
+    remapped_corners = []
+
+    # Loop through each detected corner
+    for corner in intersection_points:
+        # Adjust the corner coordinates for the resizing and cropped bounding box's top-left corner
+        original_corner = np.array([
+            (corner[0] / scale_factor) + cropped_top_left[0],
+            (corner[1] / scale_factor) + cropped_top_left[1]
+        ])
+
+        # Append the remapped corner to the array
+        remapped_corners.append(original_corner)
+
+    remapped_corners = np.array((remapped_corners))
+
+    filtered_intersections = []
+
+    for x, y in remapped_corners:
+        if max_score_box[0] <= x <= max_score_box[2] and max_score_box[1] <= y <= max_score_box[3]:
             filtered_intersections.append((x, y))
 
     # Convert filtered intersections to a numpy array
     filtered_intersection_points = np.array(filtered_intersections)
 
-    # Perform DBSCAN clustering on filtered intersection points
-    eps = 50  # Adjust the neighborhood radius as needed
-    min_samples = 2  # Adjust the minimum number of samples as needed
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-    labels = dbscan.fit_predict(filtered_intersection_points)
+    if len(filtered_intersection_points) == 0:
+        print("No intersections in the ROI found!")
+        return None
 
-    # Collect clustered points
-    clusters = {}
-    for idx, label in enumerate(labels):
-        if label != -1:  # Ignore noise points
-            if label not in clusters:
-                clusters[label] = []
-            clusters[label].append(filtered_intersection_points[idx])
+    cluster_centers = filtered_intersection_points
 
-    # Calculate cluster centers
-    cluster_centers = []
-    for label, points in clusters.items():
-        cluster_center = np.mean(points, axis=0)
-        cluster_centers.append(cluster_center)
+    # Define the thresholds for classification
+    boundary_threshold = 0.0  # Adjust this value based on your requirements
+    boundary_threshold2 = 1.0  # Adjust this value based on your requirements
+    center_threshold = 0.5  # Adjust this value based on your requirements
+
+    # Initialize lists to store the categorized points
+    points_category_A = []
+    points_category_B = []
+    points_category_C = []
+
+    # Iterate through each cluster center
+    for point in cluster_centers:
+        # Calculate the distance of the point's y-coordinate from the center of the max_score_box
+        distance_from_center = point[0] - max_score_box[0]
+
+        # Calculate the relative position of the point within the box
+        relative_position = distance_from_center / (max_score_box[2] - max_score_box[0])
+
+        if abs(relative_position-boundary_threshold) <= 0.1:
+            points_category_B.append(point)
+        elif abs(relative_position-center_threshold) <= 0.1:
+            points_category_A.append(point)
+        elif abs(relative_position - boundary_threshold2) <= 0.1:
+            points_category_C.append(point)
+
+    # Convert the categorized points lists to numpy arrays
+    points_category_A = np.array(points_category_A)
+    points_category_B = np.array(points_category_B)
+    points_category_C = np.array(points_category_C)
+
+
+    ###################################################################################
+
+    # Define the bandwidth for Mean Shift clustering
+    bandwidth = 5  # Adjust the bandwidth as needed
+
+    # Initialize MeanShift clustering
+    meanshift = MeanShift(bandwidth=bandwidth)
+
+    # Perform MeanShift clustering and get cluster labels for each category
+    cluster_centers_A = []
+    if len(points_category_A) > 0:
+        labels_A = meanshift.fit_predict(points_category_A)
+        unique_labels_A = np.unique(labels_A)
+        for label in unique_labels_A:
+            cluster_points = points_category_A[labels_A == label]
+            cluster_center = np.mean(cluster_points, axis=0)
+            cluster_centers_A.append(cluster_center)
+
+    cluster_centers_B = []
+    if len(points_category_B) > 0:
+        labels_B = meanshift.fit_predict(points_category_B)
+        unique_labels_B = np.unique(labels_B)
+        for label in unique_labels_B:
+            cluster_points = points_category_B[labels_B == label]
+            cluster_center = np.mean(cluster_points, axis=0)
+            cluster_centers_B.append(cluster_center)
+
+    cluster_centers_C = []
+    if len(points_category_C) > 0:
+        labels_C = meanshift.fit_predict(points_category_C)
+        unique_labels_C = np.unique(labels_C)
+        for label in unique_labels_C:
+            cluster_points = points_category_C[labels_C == label]
+            cluster_center = np.mean(cluster_points, axis=0)
+            cluster_centers_C.append(cluster_center)
+
+
+    points_category_A = np.array(cluster_centers_A)
+    points_category_B = np.array(cluster_centers_B)
+    points_category_C = np.array(cluster_centers_C)
+
+    ########################################################à
 
     # Draw the detected lines on the cropped region
-    result = cropped_region.copy()
+    result = cropped_image.copy()
 
-    def hex_to_rgb(hex_color):
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
-
-    def hex_to_bgr(hex_color):
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i + 2], 16) for i in (4, 2, 0))
-
-    # hex_colors = ["#E00C00","#5106A1","#FCCD23","#14DB71","#C085FD","#FF9595","#E9FE22","#8CF206","#0B90FD","#2819FC"]
-    # rgb_colors = [hex_to_bgr(hex_color) for hex_color in hex_colors]
     if merged_lines is not None:
         for rho, theta in merged_lines:
             a = np.cos(theta)
@@ -544,38 +626,34 @@ def process_image(cartesian_points, image, template_path=None):
             y2 = int(y0 - 1000 * (a))
             cv2.line(result, (x1, y1), (x2, y2), [255,0,0], 2)
 
-    if lines is not None:
-        # Mark intersections with green dots
-        for intersection in cluster_centers:
-            x, y = np.round(intersection)
-            cv2.circle(result, (int(x), int(y)), 5, (0, 255, 0), -1)
-
-    cluster_centers = np.array(cluster_centers)
-
 
     # Display the result
     plt.title("CORNERS IN THE IMAGE")
-    plt.subplot(1, 3, 1)
+    plt.subplot(1, 2, 1)
     plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-    plt.title('Detected Lines')
     plt.axis('off')
-    plt.subplot(1, 3, 2)
-    plt.imshow(cropped_image)
-    y= np.round((cluster_centers[:,1]+up_limit_roi)*rescale_factor_h)
-    x = np.round(cluster_centers[:,0]*rescale_factor_w)
-    plt.scatter(x, y, marker="x", s=100, color='red', linewidths=2)
 
-    plt.subplot(1, 3, 3)
+    plt.subplot(1, 2, 2)
     plt.imshow(image)
-    cluster_centers[:,1] = np.round((cluster_centers[:,1]+up_limit_roi)*rescale_factor_h) +500
-    cluster_centers[:,0] = np.round(cluster_centers[:,0]*rescale_factor_w) +start
     #print(cluster_centers)
-    plt.scatter( cluster_centers[:,0] ,  cluster_centers[:,1], marker="x", s=100, color='red', linewidths=2 )
+    plt.scatter( filtered_intersection_points[:,0] ,  filtered_intersection_points[:,1], marker="x", s=100, color='orange', linewidths=2 )
+    if len(points_category_A)>0:
+        plt.scatter( points_category_A[:,0] ,  points_category_A[:,1], marker="x", s=100, color='red', linewidths=2, label="A" )
+    if len(points_category_B) > 0:
+        plt.scatter( points_category_B[:,0] ,  points_category_B[:,1], marker="x", s=100, color='blue', linewidths=2, label="B")
+    if len(points_category_C)>0:
+        plt.scatter( points_category_C[:,0] ,  points_category_C[:,1], marker="x", s=100, color='cyan', linewidths=2, label='C' )
+    plt.legend()
     plt.show()
 
+    if len(points_category_A) == 0 and len(points_category_B) == 0 and len(points_category_C) == 0:
+        print("No points near the corners!")
+        return None
+
     point_tuples = {
-                    'A': {'laser': cartesian_points[0], 'image': cluster_centers[:2, :] },
-                    'B': {'laser': cartesian_points[2], 'image': cluster_centers[2:, :] }
+                    'A': {'laser': cartesian_points[0], 'image': points_category_A },
+                    'B': {'laser': cartesian_points[2], 'image': points_category_B },
+                    'C': {'laser': cartesian_points[1], 'image': points_category_C },
                     }
 
     return point_tuples
@@ -588,21 +666,43 @@ if __name__ == "__main__":
 
     range_image_publisher = RangeImagePublisher(csv_file_path, image_folder)
 
-    cmd = ''
+    #PREPARE THE DETECTOR
+    # Load the fine-tuned model's state dictionary
+    root = "./calibration_data"
+    save_path = os.path.join(root, 'one_shot_object_detector.pth')
+    model_state_dict = torch.load(save_path)
+
+    # Create an instance of the model
+    model = fasterrcnn_resnet50_fpn(pretrained=False)
+    num_classes = 1
+    model.roi_heads.box_predictor.cls_score.out_features = num_classes
+    model.roi_heads.box_predictor.bbox_pred.out_features = num_classes * 4
+    model.load_state_dict(model_state_dict)
+    # Send the model to CUDA if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model.eval()
+
+    cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+
     while cmd.lower() != 'q':
         scan, image = range_image_publisher.publish_next_scan_image()
+
+        if cmd.lower() == 's':
+            cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+            continue
+
         laser_spec = range_image_publisher.get_laser_specs()
         laser_point = process(scan, image, laser_spec)
 
-        #for testing
+        # #for testing
         # laser_point = [
         #     [ 2.30571884, -1.59577398],
         #     [ 2.24146292, -1.34847935],
         #     [ 2.03093913, -1.58731606] ]
 
         if laser_point is not None:
-            point_tuples = process_image(np.array(laser_point), image, template_file)
+            point_tuples = process_image(np.array(laser_point), image, detector=model)
             print(point_tuples)
 
-
-        #cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+        cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
