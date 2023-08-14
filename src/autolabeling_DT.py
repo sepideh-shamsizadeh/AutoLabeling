@@ -145,7 +145,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
     print(org_detected)
     print(sides_detected)
     people_detected = {}
-    sorted_people = sorted(org_detected, key=lambda x: x[0])
+    sorted_people = sorted(org_detected, key=lambda
+        x: x[0])
     print(sorted_people)
     j = 0
     sorted_positions = []
@@ -169,9 +170,9 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 }
                                 people_detected[str(j)]['visual_features'].append(vect_features)
                                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                                people_detected[str(j)]['position'].append(pos)
+                                people_detected[str(j)]['position'].append([pos[0], pos[1]])
                                 people_detected[str(j)]['bounding_box'].append(sorted_people.pop())
-                                sorted_positions.append(pos)
+                                sorted_positions.append([pos[0], pos[1]])
                                 j += 1
                         elif 240 <= bnd[0] < 480:
                             if 240 <= bnd[2] <= 480:
@@ -182,8 +183,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 }
                                 people_detected[str(j)]['visual_features'].append(vect_features)
                                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                                people_detected[str(j)]['position'].append(pos)
-                                sorted_positions.append(pos)
+                                people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                                sorted_positions.append([pos[0], pos[1]])
                                 j += 1
                 elif 240 < sorted_people[j][2] < 720:
                     people_detected[str(j)] = {
@@ -197,16 +198,28 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         left_pos = sides_detected['left']['positions'][0]
                         pos = find_closest_position(back_pos, left_pos)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                        people_detected[str(j)]['position'].append(pos)
-                        sorted_positions.append(pos)
+                        people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                        sorted_positions.append([pos[0], pos[1]])
                         j += 1
                     else:
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         pos = sides_detected['back']['positions'][-1]
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                        people_detected[str(j)]['position'].append(pos)
-                        sorted_positions.append(pos)
+                        people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                        sorted_positions.append([pos[0], pos[1]])
                         j += 1
+            elif 240 < sorted_people[j][2] < 720:
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
+                }
+                people_detected[str(j)]['visual_features'].append(vect_features)
+                pos = sides_detected['left']['positions'][0]
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                sorted_positions.append([pos[0], pos[1]])
+                j += 1
         elif 240 <= sorted_people[j][0] < 720:
             bounding_boxes = sides_detected['left']['bounding_boxes']
             positions = sides_detected['left']['positions']
@@ -220,8 +233,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         }
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                        people_detected[str(j)]['position'].append(pos)
-                        sorted_positions.append(pos)
+                        people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                        sorted_positions.append([pos[0], pos[1]])
                         j += 1
                     elif 720 <= sorted_people[j][2] < 1200:
                         if len(sides_detected['front']['positions']) > 0:
@@ -235,8 +248,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
                         else:
                             pos = sides_detected['left']['positions'][-1]
@@ -247,9 +260,21 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
+            elif 720 <= sorted_people[j][2] < 1200:
+                pos = sides_detected['front']['positions'][0]
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
+                }
+                people_detected[str(j)]['visual_features'].append(vect_features)
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                sorted_positions.append([pos[0], pos[1]])
+                j += 1
         elif 720 <= sorted_people[j][0] < 1200:
             bounding_boxes = sides_detected['front']['bounding_boxes']
             positions = sides_detected['front']['positions']
@@ -263,8 +288,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         }
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                        people_detected[str(j)]['position'].append(pos)
-                        sorted_positions.append(pos)
+                        people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                        sorted_positions.append([pos[0], pos[1]])
                         j += 1
                     elif 1200 <= sorted_people[j][2] < 1680:
                         if len(sides_detected['right']['positions']) > 0:
@@ -278,8 +303,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
                         else:
                             pos = sides_detected['front']['positions'][-1]
@@ -290,9 +315,21 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
+            elif 1200 <= sorted_people[j][2] < 1680:
+                pos = sides_detected['right']['positions'][0]
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
+                }
+                people_detected[str(j)]['visual_features'].append(vect_features)
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                sorted_positions.append([pos[0], pos[1]])
+                j += 1
         elif 1200 <= sorted_people[j][0] < 1680:
             bounding_boxes = sides_detected['right']['bounding_boxes']
             positions = sides_detected['right']['positions']
@@ -306,8 +343,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         }
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                        people_detected[str(j)]['position'].append(pos)
-                        sorted_positions.append(pos)
+                        people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                        sorted_positions.append([pos[0], pos[1]])
                         j += 1
                     elif 1680 <= sorted_people[j][2] < 1920:
                         if len(sides_detected['back']['positions']) > 0:
@@ -321,8 +358,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
                         else:
                             pos = sides_detected['right']['positions'][-1]
@@ -333,9 +370,21 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             }
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                            people_detected[str(j)]['position'].append(pos)
-                            sorted_positions.append(pos)
+                            people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                            sorted_positions.append([pos[0], pos[1]])
                             j += 1
+            elif 1680 <= sorted_people[j][2] < 1920:
+                pos = sides_detected['back']['positions'][0]
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
+                }
+                people_detected[str(j)]['visual_features'].append(vect_features)
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                sorted_positions.append([pos[0], pos[1]])
+                j += 1
         elif 1680 <= sorted_people[j][0] <= 1920:
             bounding_boxes = sides_detected['back']['bounding_boxes']
             positions = sides_detected['back']['positions']
@@ -348,8 +397,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     }
                     people_detected[str(j)]['visual_features'].append(vect_features)
                     people_detected[str(j)]['bounding_box'].append(sorted_people[j])
-                    people_detected[str(j)]['position'].append(pos)
-                    sorted_positions.append(pos)
+                    people_detected[str(j)]['position'].append([pos[0], pos[1]])
+                    sorted_positions.append([pos[0], pos[1]])
                     j += 1
     return people_detected, sorted_positions
 
@@ -595,10 +644,11 @@ def calculate_similarity(query_vector, gallery_vectors):
 
 
 def global_nearest_neighbor(reference_points, query_points, covariance_matrix):
+    reference_points = np.array(reference_points)
     distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
     neighbors = []
     for i, dis in enumerate(distances):
-        if dis < 0.5:
+        if dis <= 0.7:
             neighbors.append(i)
     return neighbors
 
@@ -838,19 +888,31 @@ if __name__ == '__main__':
                     neighbors = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
                     max = 0
                     id = 0
-                    for neighbor in neighbors:
-                        # Calculate similarity scores between the query vector and gallery vectors
-                        similarity_scores = calculate_similarity(filter_i.visual_features,
-                                                                 measurments[str(i)]['visual_features'][0])
-                        print(similarity_scores)
-                        if similarity_scores > max:
-                            max = similarity_scores
-                            id = neighbor
-                    print(max, id)
-                    filter_i.update(measurments[str(id)]['positions'][0])
-                    estimated_state = filter_i.x
-                    estimated_covariance = filter_i.P
-
+                    if len(neighbors)>0:
+                        for neighbor in neighbors:
+                            # Calculate similarity scores between the query vector and gallery vectors
+                            similarity_scores = calculate_similarity(filter_i.visual_features,
+                                                                     measurments[str(neighbor)]['visual_features'][0])
+                            print(similarity_scores)
+                            if similarity_scores > max:
+                                max = similarity_scores
+                                id = neighbor
+                        print(max, id)
+                    else:
+                        for neighbor in range(len(measurments)):
+                            similarity_scores = calculate_similarity(filter_i.visual_features,
+                                                                     measurments[str(neighbor)]['visual_features'][0])
+                            print(similarity_scores)
+                            if similarity_scores > max:
+                                max = similarity_scores
+                                id = neighbor
+                        print(max, id)
+                    if similarity_scores >= 0.85:
+                        filter_i.update(measurments[str(id)]['position'][0])
+                        estimated_state = filter_i.x
+                        estimated_covariance = filter_i.P
+                    else:
+                        print(str(filter_i.object_id)+'is missed')
             #         positions = np.array(measurements)
             #         # Calculate distances between predicted state and frame positions
             #         # distances = np.linalg.norm([filter_i.x[:2]]-positions)
