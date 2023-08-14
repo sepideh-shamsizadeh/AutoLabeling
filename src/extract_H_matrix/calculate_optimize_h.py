@@ -1,12 +1,30 @@
+import math
+
 import numpy as np
 from scipy.optimize import minimize, least_squares
 
-def compute_error(H, A, B, X, Y, fu, fv, v0, u0):
+def compute_error1(H, A, B, X, Y, fu, fv, v0, u0):
     X = np.array(X)
     Y = np.array(Y)
     u = ((fu * H[0] + u0 * H[4]) * X + (fu * H[1] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
     v = ((fv * H[2] + v0 * H[4]) * X + (fv * H[3] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
     error = np.sum((A * u + B * v - 1)**2)
+    return error
+
+
+def compute_error2(H, A, B, X, Y, fu, fv, v0, u0):
+    X = np.array(X)
+    Y = np.array(Y)
+    u = ((fu * H[0] + u0 * H[4]) * X + (fu * H[1] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (
+                H[4] * X + H[5] * Y + H[8])
+    v = ((fv * H[2] + v0 * H[4]) * X + (fv * H[3] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (
+                H[4] * X + H[5] * Y + H[8])
+
+    A = np.array(A)  # Convert A to a NumPy array
+    B = np.array(B)  # Convert B to a NumPy array
+
+    error = np.sum(np.abs(A * u + B * v - 1)) / math.sqrt(
+        np.sum(A ** 2 + B ** 2))  # Use np.abs() for element-wise absolute value
     return error
 
 def compute_H(A, B, X, Y, fu, fv, u0, v0):
@@ -26,14 +44,14 @@ def compute_H(A, B, X, Y, fu, fv, u0, v0):
 
 
 def optimizeH(H0, A, B, X, Y, fu, fv, v0, u0):
-    optimization_function = lambda H: compute_error(H, A, B, X, Y, fu, fv, v0, u0)
+    optimization_function = lambda H: compute_error1(H, A, B, X, Y, fu, fv, v0, u0)
     H = minimize(optimization_function, H0).x
     return H
 
 def Hoptimizationlsqnonlin(H0, A, B, X, Y, fu, fv, v0, u0):
-    optimization_function = lambda H: compute_error(H, A, B, X, Y, fu, fv, v0, u0)
+    optimization_function = lambda H: compute_error2(H, A, B, X, Y, fu, fv, v0, u0)
     options = {'xtol': 1e-6, 'ftol': 1e-6, 'maxfev': 1000}
-    H = least_squares(optimization_function, H0, method='lm').x
+    H = least_squares(optimization_function, H0, method='trf', xtol=options['xtol'], ftol=options['ftol'], max_nfev=options['maxfev']).x
     return H
 
 if __name__ == '__main__':
