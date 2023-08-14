@@ -34,7 +34,8 @@ def compute_H(A, B, X, Y, fu, fv, u0, v0):
                    (A[i] * u0 + B[i] * v0 - 1) * X[i], (A[i] * u0 + B[i] * v0 - 1) * Y[i],
                    A[i] * fu, B[i] * fv, (A[i] * u0 + B[i] * v0 - 1)]
 
-    r = 0.01 + 0.09 * np.random.rand(9, 1)
+    r = 0.000001 + 0.000005 * np.random.rand(9, 1)
+    print(r)
 
     k_inverse = np.linalg.inv(k)
     H = np.dot(k_inverse, r)
