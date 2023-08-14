@@ -19,4 +19,8 @@ src/Weights-20230803T150538Z-001/
 build/
 devel/
 images/
+.catkin_tools/
+logs/
+src/venv/
+src/auto_calibration_tools/calibration_data/one_shot_object_detector.pth
 
