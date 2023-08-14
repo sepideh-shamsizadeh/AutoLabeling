@@ -140,7 +140,7 @@ def find_closest_position(pose0, pose1):
         return pose1
 
 
-def check_one_label(org_detected, sides_detected):
+def assign_pose2panoramic(image, org_detected, sides_detected):
     print('++++++++++++++++++++++++++++++++++')
     print(org_detected)
     print(sides_detected)
@@ -158,8 +158,13 @@ def check_one_label(org_detected, sides_detected):
                         if 240 <= bnd[2] < 480:
                             people_detected[str(j)] = {
                                 'bounding_box': [],  # Initialize with an empty list
-                                'position': []  # Initialize with default values, replace with actual values
+                                'position': [],  # Initialize with default values, replace with actual values
+                                'visual_features': []
                             }
+                            preprocced_image = load_and_preprocess_image(image, sorted_people[j])
+                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect_features = vect.view((-1)).numpy()
+                            people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append(pos)
                             people_detected[str(j)]['bounding_box'].append(sorted_people.pop())
@@ -470,12 +475,19 @@ def get_activation(name, activation):
     return hook
 
 
-def extract_feature_single(model, image, device):
+def extract_feature_single(model, image, device="cpu"):
     model.eval()
     image = image.to(device)
     with torch.no_grad():
         output = model(image)
-    return output.squeeze().detach().cpu()
+
+    if isinstance(output, tuple):
+        # Process each tensor in the tuple
+        processed_output = tuple(tensor.squeeze().detach().cpu() for tensor in output)
+        return processed_output
+    else:
+        # Process the single tensor
+        return output.squeeze().detach().cpu()
 
 
 def load_and_preprocess_image(image, bounding_box):
@@ -721,13 +733,14 @@ if __name__ == '__main__':
                         dsides['left']['positions'] = pose
                         print(pose)
                         print('-------------------')
-            boundings = check_one_label(detected_org, dsides)
-            print(boundings)
+            measurments = assign_pose2panoramic(img, detected_org, dsides)
+            print(measurments)
             frame_num = next(counter_gen)
             pp_data = []
             if frame_num == 0:
-                for i in range(len(boundings)):
-                    person = boundings[str(i)]['position'][0]
+                for i in range(len(measurments)):
+                    person = measurments[str(i)]['position'][0]
+                    bounding_boxes = measurments[str(i)]['bounding_box'][0]
                     filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
                                                      fx=state_transition_fn, hx=measurement_fn,
                                                      points=MerweScaledSigmaPoints(num_states, alpha=0.1, beta=2.,
@@ -753,7 +766,7 @@ if __name__ == '__main__':
                     filter_i.miss_frame = []
                     filter_i.frame_num = frame_num
                     filters.append(filter_i)
-                    preprocced_image = load_and_preprocess_image(img, boundings[str(i)]['bounding_box'][0])
+                    preprocced_image = load_and_preprocess_image(img, measurments[str(i)]['bounding_box'][0])
                     vect = extract_feature_single(model, preprocced_image)
                     vect_features = vect.view((-1)).numpy()
                     filters.embedded_feature = vect_features
