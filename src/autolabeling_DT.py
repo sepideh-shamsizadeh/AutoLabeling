@@ -124,25 +124,157 @@ def counter():
         num += 1
 
 
+def check_border(bounding_box):
+    flag = False
+    return flag
+
+
+def find_closest_position(pose0, pose1):
+    # Calculate distances for both positions
+    distance_0 = distance(pose0)
+    distance_1 = distance(pose1)
+
+    if distance_0 < distance_1:
+        return pose0
+    else:
+        return pose1
+
+
 def check_one_label(org_detected, sides_detected):
-    people_detected = []
-    boundings = []
-    sorted_list = sorted(org_detected, key=lambda x: x[0])
-    for value in sorted_list:
-        if 0 <= value[0] < 240 or 1680 <= value[0] <= 1920:
+    print('++++++++++++++++++++++++++++++++++')
+    print(org_detected)
+    print(sides_detected)
+    people_detected = {}
+    sorted_people = sorted(org_detected, key=lambda x: x[0])
+    print(sorted_people)
+    j = 0
+    while j < len(sorted_people):
+        if 0 <= sorted_people[j][0] < 240:
             bounding_boxes = sides_detected['back']['bounding_boxes']
             positions = sides_detected['back']['positions']
-        elif 240 <= value[0] < 720:
+            if 0 <= sorted_people[j][2] < 240:
+                for bnd, pos in zip(bounding_boxes, positions):
+                    if 0 <= bnd[0] < 480:
+                        if 240 <= bnd[2] < 480:
+                            people_detected[str(j)] = {
+                                'bounding_box': [],  # Initialize with an empty list
+                                'position': []  # Initialize with default values, replace with actual values
+                            }
+                            people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                            people_detected[str(j)]['position'].append(pos)
+                            people_detected[str(j)]['bounding_box'].append(sorted_people.pop())
+                            print(j, pose)
+                            j += 1
+                    elif 240 <= bnd[0] < 480:
+                        if 240 <= bnd[2] <= 480:
+                            people_detected[str(j)] = {
+                                'bounding_box': [],  # Initialize with an empty list
+                                'position': []  # Initialize with default values, replace with actual values
+                            }
+                            people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                            people_detected[str(j)]['position'].append(pos)
+                            print(j, pose)
+                            j += 1
+            elif 240 < sorted_people[j][2] < 720:
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': []  # Initialize with default values, replace with actual values
+                }
+                back_pos = sides_detected['back']['positions'][-1]
+                left_pos = sides_detected['left']['positions'][0]
+                pos = find_closest_position(back_pos, left_pos)
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append(pos)
+                print(j, pose)
+                j += 1
+        elif 240 <= sorted_people[j][0] < 720:
             bounding_boxes = sides_detected['left']['bounding_boxes']
             positions = sides_detected['left']['positions']
-        elif 720 <= value[0] < 1200:
+            if 240 <= sorted_people[j][2] < 720:
+                for bnd, pos in zip(bounding_boxes, positions):
+                    people_detected[str(j)] = {
+                        'bounding_box': [],  # Initialize with an empty list
+                        'position': []  # Initialize with default values, replace with actual values
+                    }
+                    people_detected[str(j)]['bounding_box'].append(bnd)
+                    people_detected[str(j)]['position'].append(pos)
+                    print(j, pose)
+                    j += 1
+            elif 720 <= sorted_people[j][2] < 1200:
+                left_pos = sides_detected['left']['positions'][-1]
+                front_pos = sides_detected['front']['positions'][0]
+                pos = find_closest_position(front_pos, left_pos)
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': []  # Initialize with default values, replace with actual values
+                }
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append(pos)
+                print(j, pose)
+                j += 1
+        elif 720 <= sorted_people[j][0] < 1200:
             bounding_boxes = sides_detected['front']['bounding_boxes']
             positions = sides_detected['front']['positions']
-        elif 1200 <= value[0] < 1680:
+            if 720 <= sorted_people[j][2] < 1200:
+                for bnd, pos in zip(bounding_boxes, positions):
+                    people_detected[str(j)] = {
+                        'bounding_box': [],  # Initialize with an empty list
+                        'position': []  # Initialize with default values, replace with actual values
+                    }
+                    people_detected[str(j)]['bounding_box'].append(bnd)
+                    people_detected[str(j)]['position'].append(pos)
+                    print(j, pose)
+                    j += 1
+            elif 1200 <= sorted_people[j][2] < 1680:
+                front_pos = sides_detected['front']['positions'][-1]
+                right_pos = sides_detected['right']['positions'][0]
+                pos = find_closest_position(front_pos, right_pos)
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': []  # Initialize with default values, replace with actual values
+                }
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append(pos)
+                print(j, pose)
+                j += 1
+        elif 1200 <= sorted_people[j][0] < 1680:
             bounding_boxes = sides_detected['right']['bounding_boxes']
             positions = sides_detected['right']['positions']
-
-    return people_detected, boundings
+            if 1200 <= sorted_people[j][2] < 1680:
+                for bnd, pos in zip(bounding_boxes, positions):
+                    people_detected[str(j)] = {
+                        'bounding_box': [],  # Initialize with an empty list
+                        'position': []  # Initialize with default values, replace with actual values
+                    }
+                    people_detected[str(j)]['bounding_box'].append(bnd)
+                    people_detected[str(j)]['position'].append(pos)
+                    print(j, pose)
+                    j += 1
+            elif 1680 <= sorted_people[j][2] < 1920:
+                right_pos = sides_detected['right']['positions'][-1]
+                back_pos = sides_detected['back']['positions'][0]
+                pos = find_closest_position(back_pos, right_pos)
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': []  # Initialize with default values, replace with actual values
+                }
+                people_detected[str(j)]['bounding_box'].append(sorted_people[j])
+                people_detected[str(j)]['position'].append(pos)
+                print(j, pose)
+                j += 1
+        elif 1680 <= sorted_people[j][0] <= 1920:
+            bounding_boxes = sides_detected['back']['bounding_boxes']
+            positions = sides_detected['back']['positions']
+            for bnd, pos in zip(bounding_boxes, positions):
+                people_detected[str(j)] = {
+                    'bounding_box': [],  # Initialize with an empty list
+                    'position': []  # Initialize with default values, replace with actual values
+                }
+                people_detected[str(j)]['bounding_box'].append(bnd)
+                people_detected[str(j)]['position'].append(pos)
+                print(j, pose)
+                j += 1
+    return people_detected
 
 
 def laser_scan2xy(msg):
@@ -180,7 +312,7 @@ def check_intersection(d_bound, point, flag):
     if flag:
         offset = 15
     else:
-        offset = 30
+        offset = 15
     if d_bound[0] < point[0] < d_bound[2]:
         if d_bound[1] < point[1] < d_bound[3]:
             return True
@@ -225,10 +357,8 @@ def check_xy(xy, face):
     return x, y
 
 
-def selected_point(side_xy, side, side_info, face, detected):
-    print(face)
-    XY_people = []
-    print(detected)
+def selected_point(side_xy, side, side_info, face, detected, side_img):
+    XY_people = [(0, 0) for _ in range(len(detected))]
     for ind, person in enumerate(detected):
         flag = False
         p = []
@@ -236,6 +366,7 @@ def selected_point(side_xy, side, side_info, face, detected):
         for xy in side_xy:
             x, y = check_xy(xy, face)
             u, v = convert_robotF2imageF(x, y, side_info)
+            # draw_circle_bndBOX(u, v, side_img)
             if u < 0:
                 u = 0
             if v < 0:
@@ -252,6 +383,7 @@ def selected_point(side_xy, side, side_info, face, detected):
             for xy in side:
                 x, y = check_xy(xy, face)
                 u, v = convert_robotF2imageF(x, y, side_info)
+                #                 draw_circle_bndBOX(u, v, side_img)
                 if v > 480:
                     v = 479
                 if face == 'left':
@@ -270,11 +402,13 @@ def selected_point(side_xy, side, side_info, face, detected):
             x, y = check_points(x_y)
         elif len(p) == 1:
             x, y = x_y[0]
-        if x != 0 and y != 0:
-            XY_people.append((x, y))
+        if 0 < abs(x) <= 7 and 0 < abs(x) <= 7:
+            XY_people[ind] = (x, y)
+            print(ind, person, (x, y))
     for xy in XY_people:
         x, y = check_xy(xy, face)
         u, v = convert_robotF2imageF(x, y, side_info)
+    #         draw_circle_bndBOX(u, v, side_img)
     return XY_people
 
 
@@ -476,7 +610,7 @@ if __name__ == '__main__':
     current_object_id = 0
     galleries = {}
     scan = []
-    with open('/home/sepid/workspace/Thesis/GuidingRobot/data1/scan.csv', 'r') as file:
+    with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/scan.csv', 'r') as file:
         # Create a CSV reader object
         reader = csv.reader(file)
         # Read each row of the CSV file
@@ -486,7 +620,7 @@ if __name__ == '__main__':
             scan.append(ranges)
 
     dr_spaam = []
-    with open('/home/sepid/workspace/Thesis/GuidingRobot/data1/drspaam_data2.csv', 'r') as file:
+    with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/drspaam_data2.csv', 'r') as file:
         # Create a CSV reader object
         reader = csv.reader(file)
         # Read each row of the CSV file
@@ -496,11 +630,27 @@ if __name__ == '__main__':
 
     data = {}
     # for i in range(36, int(len(scan)/2)):
-    for i in range(len(dr_spaam)):
+    for i in range(170, 171):
 
-        path = '/home/sepid/workspace/Thesis/GuidingRobot/data1/image_' + str(i) + '.jpg'
+        path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
         print(path)
-        dsides = {}
+        dsides = {'back': {
+            'bounding_boxes': [],
+            'positions': []
+        },
+            'front': {
+                'bounding_boxes': [],
+                'positions': []
+            },
+            'left': {
+                'bounding_boxes': [],
+                'positions': []
+            },
+            'right': {
+                'bounding_boxes': [],
+                'positions': []
+            }
+        }
         if os.path.exists(path):
             img = cv2.imread(path)
             #             # print()
@@ -525,53 +675,59 @@ if __name__ == '__main__':
                 if face in FACE_NAMES:
                     cv_image = np.array(side_img)
                     detected = detect_people.detect_person(cv_image, model)
+                    print(face)
                     print(detected)
+                    sorted_detected = sorted(detected, key=lambda x: x[0])
+                    print(sorted_detected)
+                    dsides[face]['bounding_boxes'] = sorted_detected
                     if face == 'back':
                         pose = []
-                        dsides['back']['bounding_boxes'] = detected
-                        XY = selected_point(back_xy, back, back_info, face, detected)
+
+                        XY = selected_point(back_xy, back, back_info, face, sorted_detected, cv_image)
                         for xy in XY:
                             if xy[0] != 0 and xy[1] != 0:
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
-                        dsides['back']['positions'] = pose
-
+                        dsides[face]['positions'] = pose
+                        print(pose)
+                        print('-------------------')
                     elif face == 'front':
                         pose = []
-                        dsides['front']['bounding_boxes'] = detected
-                        XY = selected_point(front_xy, front, front_info, face, detected)
-                        print('-------')
-                        print(detected)
+                        XY = selected_point(front_xy, front, front_info, face, sorted_detected, cv_image)
                         for xy in XY:
                             if xy[0] != 0 and xy[1] != 0:
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['front']['positions'] = pose
-
+                        print(pose)
+                        print('-------------------')
                     elif face == 'right':
                         pose = []
-                        dsides['right']['bounding_boxes'] = detected
-                        XY = selected_point(right_xy, right, right_info, face, detected)
+                        XY = selected_point(right_xy, right, right_info, face, sorted_detected, cv_image)
                         for xy in XY:
                             if xy[0] != 0 and xy[1] != 0:
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['right']['positions'] = pose
-
+                        print(pose)
+                        print('-------------------')
                     elif face == 'left':
                         pose = []
-                        dsides['left']['bounding_boxes'] = detected
-                        XY = selected_point(left_xy, left, left_info, face, detected)
+                        XY = selected_point(left_xy, left, left_info, face, sorted_detected, cv_image)
                         for xy in XY:
                             if xy[0] != 0 and xy[1] != 0:
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['left']['positions'] = pose
-            bounding_boxs, measurements = check_one_label(detected_org, dsides)
+                        print(pose)
+                        print('-------------------')
+            boundings = check_one_label(detected_org, dsides)
+            print(boundings)
             frame_num = next(counter_gen)
             pp_data = []
             if frame_num == 0:
-                for object_id, person in enumerate(measurements):
+                for i in range(len(boundings)):
+                    person = boundings[str(i)]['position'][0]
                     filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
                                                      fx=state_transition_fn, hx=measurement_fn,
                                                      points=MerweScaledSigmaPoints(num_states, alpha=0.1, beta=2.,
@@ -587,8 +743,8 @@ if __name__ == '__main__':
                     filter_i.R = R
 
                     # Set object ID
-                    filter_i.object_id = object_id
-                    current_object_id = object_id
+                    filter_i.object_id = i
+                    current_object_id = i
                     # print(filter_i.x[:])
                     # print(filter_i.object_id)
 
@@ -597,168 +753,168 @@ if __name__ == '__main__':
                     filter_i.miss_frame = []
                     filter_i.frame_num = frame_num
                     filters.append(filter_i)
-                    preprocced_image = load_and_preprocess_image(image, bounding_boxs[object_id])
+                    preprocced_image = load_and_preprocess_image(img, boundings[str(i)]['bounding_box'][0])
                     vect = extract_feature_single(model, preprocced_image)
                     vect_features = vect.view((-1)).numpy()
                     filters.embedded_feature = vect_features
-                    galleries[object_id]['features'] = vect_features
-                    galleries[object_id]['position'] = (person[0], person[1])
-            else:
-                # Predict the next state for each object
-                ids = []
-                attached = []
-                # print(len(filters))
-                for filter_i in filters:
-                    positions = np.array(measurements)
-                    # Calculate distances between predicted state and frame positions
-                    # distances = np.linalg.norm([filter_i.x[:2]]-positions)
-                    # Find the index of the nearest neighbor
-                    covariance_matrix = np.array([[1, 0], [0, 1]])
-                    nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
-
-                    if len(attached) == 0:
-                        nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                        attached.append(nearest_measurement)
-                        # print('a1', attached)
-                        # print(nearest_measurement)
-                        filter_i.predict(dt=dt)  # Pass the time step dt
-                        filter_i.update(nearest_measurement)
-                        # print(filter_i.object_id,nearest_measurement)
-                        estimated_state = filter_i.x  # Estimated state after each update
-                        estimated_covariance = filter_i.P
-                    else:
-                        nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                        natt = True
-                        for a in attached:
-                            if a[0] == nearest_measurement[0] and a[1] == nearest_measurement[1]:
-                                natt = False
-                        if natt:
-
-                            # print('ob', filter_i.object_id)
-                            # print(filter_i.object_id)
-                            # Update the state using the nearest neighbor measurement
-                            nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                            if filter_i.object_id == 1:
-                                print(positions)
-                                print(filter_i.x[:2])
-                                print(nearest_measurement)
-                            attached.append(nearest_measurement)
-                            # print('a1', attached)
-                            # print(nearest_measurement)
-                            filter_i.predict(dt=dt)  # Pass the time step dt
-                            filter_i.update(nearest_measurement)
-                            # print(filter_i.object_id,nearest_measurement)
-                            estimated_state = filter_i.x  # Estimated state after each update
-                            estimated_covariance = filter_i.P
-                            # print('ff',filter_i.x[:2])
-                            # print("Track position:", estimated_state[:2])
-                        else:
-                            # print('ii', filter_i.object_id)
-                            filter_i.loss_association_counter += 1
-                            filter_i.miss_frame.append('frame '+str(frame_num))
-                            # Handle loss of ID and new ID assignments
-                # print(frame, mes_seen)
-                if len(measurements) > len(attached):
-                    not_in_attached = [element for element in measurements if
-                                       all((element != arr).any() for arr in attached)]
-                    for ms in not_in_attached:
-                        if len(removed_objects_p) > 0:
-                            ms = np.array([[ms[0], ms[1]]])
-                            ms_2d = ms.reshape(1, -1)  # Reshape ms to a 2D array with one row
-                            positions = np.array(removed_objects_p)
-                            # Calculate distances between predicted state and frame positions
-                            covariance_matrix = np.array([[1, 0], [0, 1]])
-                            nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]],
-                                                                    covariance_matrix)
-                            if nearest_index > -1:
-                                filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-                                                                 fx=state_transition_fn, hx=measurement_fn,
-                                                                 points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-                                                                                               beta=2.,
-                                                                                               kappa=-1.0))
-                                filter_i.x = [removed_objects_p[nearest_index][0], removed_objects_p[nearest_index][1],
-                                              0, 0]
-                                filter_i.P = initial_covariance
-                                filter_i.dim_x = num_states
-
-                                # Set process and measurement noise covariance matrices
-                                filter_i.Q = Q
-                                filter_i.R = R
-
-                                # Set object ID
-                                filter_i.object_id = removed_objects_i[nearest_index]
-                                # print('aga',filter_i.object_id)
-                                # Initialize loss of measurement association counter
-                                filter_i.loss_association_counter = 0
-                                estimated_state = filter_i.x  # Estimated state after each update
-                                estimated_covariance = filter_i.P
-                                filter_i.miss_frame = []
-                                filter_i.frame_num = frame_num
-                                filters.append(filter_i)
-                                removed_objects_i.pop(nearest_index)
-                                removed_objects_p.pop(nearest_index)
-
-                        else:
-                            filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-                                                             fx=state_transition_fn, hx=measurement_fn,
-                                                             points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-                                                                                           beta=2.,
-                                                                                           kappa=-1.0))
-
-                            # Set initial state and covariance matrix
-                            # print(frame, current_object_id, measurements[ind])
-                            filter_i.x = [ms[0], ms[1], 0, 0]
-                            filter_i.P = initial_covariance
-                            filter_i.dim_x = num_states
-
-                            # Set process and measurement noise covariance matrices
-                            filter_i.Q = Q
-                            filter_i.R = R
-
-                            # Set object ID
-                            current_object_id += 1
-                            filter_i.object_id = current_object_id
-
-                            # Initialize loss of measurement association counter
-                            filter_i.loss_association_counter = 0
-                            estimated_state = filter_i.x  # Estimated state after each update
-                            estimated_covariance = filter_i.P
-                            filter_i.miss_frame = []
-                            filter_i.frame_num = frame_num
-                            filters.append(filter_i)
-                    # print("Track position:", estimated_state[:2])
-            remove_filters = []
-            for filter_i in filters:
-                # print('check', filter_i.object_id)
-                if filter_i.loss_association_counter >= loss_association_threshold:
-                    if abs(float(filter_i.miss_frame[loss_association_threshold - 1].split(' ')[1]) - float(
-                            filter_i.miss_frame[loss_association_threshold - 2].split(' ')[1])) == 1:
-                        # print('loss', filter_i.object_id)
-                        # print('loss', frame)
-                        # Handle loss of ID
-                        # print(len(filters))
-                        removed_objects_p.append(filter_i.x[:2])
-                        removed_objects_i.append(filter_i.object_id)
-                        remove_filters.append(filter_i)
-                    else:
-                        position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-                        pp = {'id' + str(filter_i.object_id): position}
-                        # print(pp)
-                        pp_data.append(pp)
-                else:
-                    position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-                    pp = {'id' + str(filter_i.object_id): position}
-                    # print(pp)
-                    pp_data.append(pp)
-            yaml_data = {'frame ' + str(frame_num): pp_data}
-            output_file = 'tracks1.yaml'
-
-            # Open the file in write mode
-            with open(output_file, 'a') as file:
-                # Write the YAML data to the file
-                yaml.dump(yaml_data, file)
-            filters = handle_loss_of_id(filters, remove_filters)
-            # print(removed_objects_i)
-            print('-------------------------------------------------------------------------------------------')
-
-
+                    galleries[str(i)]['features'] = vect_features
+                    galleries[str(i)]['position'] = (person[0], person[1])
+            # else:
+            #     # Predict the next state for each object
+            #     ids = []
+            #     attached = []
+            #     # print(len(filters))
+            #     for filter_i in filters:
+            #         positions = np.array(measurements)
+            #         # Calculate distances between predicted state and frame positions
+            #         # distances = np.linalg.norm([filter_i.x[:2]]-positions)
+            #         # Find the index of the nearest neighbor
+            #         covariance_matrix = np.array([[1, 0], [0, 1]])
+            #         nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
+            #
+            #         if len(attached) == 0:
+            #             nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
+            #             attached.append(nearest_measurement)
+            #             # print('a1', attached)
+            #             # print(nearest_measurement)
+            #             filter_i.predict(dt=dt)  # Pass the time step dt
+            #             filter_i.update(nearest_measurement)
+            #             # print(filter_i.object_id,nearest_measurement)
+            #             estimated_state = filter_i.x  # Estimated state after each update
+            #             estimated_covariance = filter_i.P
+            #         else:
+            #             nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
+            #             natt = True
+            #             for a in attached:
+            #                 if a[0] == nearest_measurement[0] and a[1] == nearest_measurement[1]:
+            #                     natt = False
+            #             if natt:
+            #
+            #                 # print('ob', filter_i.object_id)
+            #                 # print(filter_i.object_id)
+            #                 # Update the state using the nearest neighbor measurement
+            #                 nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
+            #                 if filter_i.object_id == 1:
+            #                     print(positions)
+            #                     print(filter_i.x[:2])
+            #                     print(nearest_measurement)
+            #                 attached.append(nearest_measurement)
+            #                 # print('a1', attached)
+            #                 # print(nearest_measurement)
+            #                 filter_i.predict(dt=dt)  # Pass the time step dt
+            #                 filter_i.update(nearest_measurement)
+            #                 # print(filter_i.object_id,nearest_measurement)
+            #                 estimated_state = filter_i.x  # Estimated state after each update
+            #                 estimated_covariance = filter_i.P
+            #                 # print('ff',filter_i.x[:2])
+            #                 # print("Track position:", estimated_state[:2])
+            #             else:
+            #                 # print('ii', filter_i.object_id)
+            #                 filter_i.loss_association_counter += 1
+            #                 filter_i.miss_frame.append('frame '+str(frame_num))
+            #                 # Handle loss of ID and new ID assignments
+            #     # print(frame, mes_seen)
+            #     if len(measurements) > len(attached):
+            #         not_in_attached = [element for element in measurements if
+            #                            all((element != arr).any() for arr in attached)]
+            #         for ms in not_in_attached:
+            #             if len(removed_objects_p) > 0:
+            #                 ms = np.array([[ms[0], ms[1]]])
+            #                 ms_2d = ms.reshape(1, -1)  # Reshape ms to a 2D array with one row
+            #                 positions = np.array(removed_objects_p)
+            #                 # Calculate distances between predicted state and frame positions
+            #                 covariance_matrix = np.array([[1, 0], [0, 1]])
+            #                 nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]],
+            #                                                         covariance_matrix)
+            #                 if nearest_index > -1:
+            #                     filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
+            #                                                      fx=state_transition_fn, hx=measurement_fn,
+            #                                                      points=MerweScaledSigmaPoints(num_states, alpha=0.1,
+            #                                                                                    beta=2.,
+            #                                                                                    kappa=-1.0))
+            #                     filter_i.x = [removed_objects_p[nearest_index][0], removed_objects_p[nearest_index][1],
+            #                                   0, 0]
+            #                     filter_i.P = initial_covariance
+            #                     filter_i.dim_x = num_states
+            #
+            #                     # Set process and measurement noise covariance matrices
+            #                     filter_i.Q = Q
+            #                     filter_i.R = R
+            #
+            #                     # Set object ID
+            #                     filter_i.object_id = removed_objects_i[nearest_index]
+            #                     # print('aga',filter_i.object_id)
+            #                     # Initialize loss of measurement association counter
+            #                     filter_i.loss_association_counter = 0
+            #                     estimated_state = filter_i.x  # Estimated state after each update
+            #                     estimated_covariance = filter_i.P
+            #                     filter_i.miss_frame = []
+            #                     filter_i.frame_num = frame_num
+            #                     filters.append(filter_i)
+            #                     removed_objects_i.pop(nearest_index)
+            #                     removed_objects_p.pop(nearest_index)
+            #
+            #             else:
+            #                 filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
+            #                                                  fx=state_transition_fn, hx=measurement_fn,
+            #                                                  points=MerweScaledSigmaPoints(num_states, alpha=0.1,
+            #                                                                                beta=2.,
+            #                                                                                kappa=-1.0))
+            #
+            #                 # Set initial state and covariance matrix
+            #                 # print(frame, current_object_id, measurements[ind])
+            #                 filter_i.x = [ms[0], ms[1], 0, 0]
+            #                 filter_i.P = initial_covariance
+            #                 filter_i.dim_x = num_states
+            #
+            #                 # Set process and measurement noise covariance matrices
+            #                 filter_i.Q = Q
+            #                 filter_i.R = R
+            #
+            #                 # Set object ID
+            #                 current_object_id += 1
+            #                 filter_i.object_id = current_object_id
+            #
+            #                 # Initialize loss of measurement association counter
+            #                 filter_i.loss_association_counter = 0
+            #                 estimated_state = filter_i.x  # Estimated state after each update
+            #                 estimated_covariance = filter_i.P
+            #                 filter_i.miss_frame = []
+            #                 filter_i.frame_num = frame_num
+            #                 filters.append(filter_i)
+            #         # print("Track position:", estimated_state[:2])
+            # remove_filters = []
+            # for filter_i in filters:
+            #     # print('check', filter_i.object_id)
+            #     if filter_i.loss_association_counter >= loss_association_threshold:
+            #         if abs(float(filter_i.miss_frame[loss_association_threshold - 1].split(' ')[1]) - float(
+            #                 filter_i.miss_frame[loss_association_threshold - 2].split(' ')[1])) == 1:
+            #             # print('loss', filter_i.object_id)
+            #             # print('loss', frame)
+            #             # Handle loss of ID
+            #             # print(len(filters))
+            #             removed_objects_p.append(filter_i.x[:2])
+            #             removed_objects_i.append(filter_i.object_id)
+            #             remove_filters.append(filter_i)
+            #         else:
+            #             position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
+            #             pp = {'id' + str(filter_i.object_id): position}
+            #             # print(pp)
+            #             pp_data.append(pp)
+            #     else:
+            #         position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
+            #         pp = {'id' + str(filter_i.object_id): position}
+            #         # print(pp)
+            #         pp_data.append(pp)
+            # yaml_data = {'frame ' + str(frame_num): pp_data}
+            # output_file = 'tracks1.yaml'
+            #
+            # # Open the file in write mode
+            # with open(output_file, 'a') as file:
+            #     # Write the YAML data to the file
+            #     yaml.dump(yaml_data, file)
+            # filters = handle_loss_of_id(filters, remove_filters)
+            # # print(removed_objects_i)
+            # print('-------------------------------------------------------------------------------------------')
+            #
+            #
