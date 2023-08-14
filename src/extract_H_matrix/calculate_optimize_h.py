@@ -1,8 +1,16 @@
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, least_squares
 
+def compute_error(H, A, B, X, Y, fu, fv, v0, u0):
+    X = np.array(X)
+    Y = np.array(Y)
+    u = ((fu * H[0] + u0 * H[4]) * X + (fu * H[1] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
+    v = ((fv * H[2] + v0 * H[4]) * X + (fv * H[3] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
+    error = np.sum((A * u + B * v - 1)**2)
+    return error
 
 def compute_H(A, B, X, Y, fu, fv, u0, v0):
+    k = np.zeros((9, 9))
     for i in range(9):
         k[i, :] = [A[i] * fu * X[i], A[i] * fu * Y[i], B[i] * fv * X[i], B[i] * fv * Y[i],
                    (A[i] * u0 + B[i] * v0 - 1) * X[i], (A[i] * u0 + B[i] * v0 - 1) * Y[i],
@@ -10,44 +18,23 @@ def compute_H(A, B, X, Y, fu, fv, u0, v0):
 
     r = 0.01 + 0.09 * np.random.rand(9, 1)
 
-    H = np.linalg.lstsq(k, r, rcond=None)[0].flatten()
+    k_inverse = np.linalg.inv(k)
+    H = np.dot(k_inverse, r)
+
+    H_matrix = H.reshape(3, 3)
+    return H_matrix
+
+
+def optimizeH(H0, A, B, X, Y, fu, fv, v0, u0):
+    optimization_function = lambda H: compute_error(H, A, B, X, Y, fu, fv, v0, u0)
+    H = minimize(optimization_function, H0).x
     return H
 
-
-def optimize_H(H, A, B, X, Y, fu, fv, u0, v0, reference_points):
-    def loss(H):
-        H_matrix = H.reshape(3, 3)
-        projection_error = np.zeros(9)
-        for i in range(9):
-            point_vector = np.array([A[i] * X[i], A[i] * Y[i], B[i] * X[i], B[i] * Y[i],
-                                     A[i] * u0 + B[i] * v0 - 1, A[i] * u0 + B[i] * v0 - 1,
-                                     A[i], B[i], A[i] * u0 + B[i] * v0 - 1])
-            point_matrix = point_vector.reshape(3, 3)
-
-            proj = H_matrix @ point_matrix  # Perform matrix multiplication
-            proj /= proj[-1]  # Normalize by the last element
-            projection_error[i] = np.sum((proj - reference_points[i]) ** 2)
-        return np.sum(projection_error)
-
-    result = minimize(loss, H, method='Nelder-Mead')
-    return result.x
-
-
-def H_optimization_lsqnonlin(H, A, B, X, Y, fu, fv, u0, v0):
-    def loss(H):
-        H_matrix = H.reshape(3, 3)
-        projection_error = np.zeros(9)
-        for i in range(9):
-            proj = H_matrix @ np.array([A[i] * X[i], A[i] * Y[i], B[i] * X[i], B[i] * Y[i],
-                                        A[i] * u0 + B[i] * v0 - 1, A[i] * u0 + B[i] * v0 - 1,
-                                        A[i], B[i], A[i] * u0 + B[i] * v0 - 1])
-            proj /= proj[-1]
-            projection_error[i] = np.sum((proj - r[i]) ** 2)
-        return projection_error
-
-    result = minimize(loss, H, method='trust-constr')
-    return result.x
-
+def Hoptimizationlsqnonlin(H0, A, B, X, Y, fu, fv, v0, u0):
+    optimization_function = lambda H: compute_error(H, A, B, X, Y, fu, fv, v0, u0)
+    options = {'xtol': 1e-6, 'ftol': 1e-6, 'maxfev': 1000}
+    H = least_squares(optimization_function, H0, method='lm').x
+    return H
 
 if __name__ == '__main__':
     A = [0.004878048780487805, 0.0049200492004954684, 0.004405286343612335, 0.0061654392875546745, 0.00546448087431694
@@ -177,8 +164,8 @@ if __name__ == '__main__':
     v0 = 246.917074981568
     H = compute_H(A, B, X, Y, fu, fv, u0, v0)
     print(H)
-    H1 = optimize_H(H, A, B, X, Y, fu, fv, u0, v0)
+    H1 = optimizeH(H, A, B, X, Y, fu, fv, u0, v0)
     print(H1)
 
-    H2 = H_optimization_lsqnonlin(H1, A, B, X, Y, fu, fv, u0, v0)
+    H2 = Hoptimizationlsqnonlin(H1, A, B, X, Y, fu, fv, u0, v0)
     print(H2)

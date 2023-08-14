@@ -148,7 +148,11 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
     sorted_people = sorted(org_detected, key=lambda x: x[0])
     print(sorted_people)
     j = 0
+    sorted_positions = []
     while j < len(sorted_people):
+        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
+        vect = extract_feature_single(model, preprocced_image, "cpu")
+        vect_features = vect.view((-1)).numpy()
         if 0 <= sorted_people[j][0] < 240:
             bounding_boxes = sides_detected['back']['bounding_boxes']
             positions = sides_detected['back']['positions']
@@ -161,36 +165,37 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'position': [],  # Initialize with default values, replace with actual values
                                 'visual_features': []
                             }
-                            preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
-                            vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append(pos)
                             people_detected[str(j)]['bounding_box'].append(sorted_people.pop())
-                            print(j, pose)
+                            sorted_positions.append(pos)
                             j += 1
                     elif 240 <= bnd[0] < 480:
                         if 240 <= bnd[2] <= 480:
                             people_detected[str(j)] = {
                                 'bounding_box': [],  # Initialize with an empty list
-                                'position': []  # Initialize with default values, replace with actual values
+                                'position': [],  # Initialize with default values, replace with actual values
+                                'visual_features': []
                             }
+                            people_detected[str(j)]['visual_features'].append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append(pos)
-                            print(j, pose)
+                            sorted_positions.append(pos)
                             j += 1
             elif 240 < sorted_people[j][2] < 720:
                 people_detected[str(j)] = {
                     'bounding_box': [],  # Initialize with an empty list
-                    'position': []  # Initialize with default values, replace with actual values
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
                 }
+                people_detected[str(j)]['visual_features'].append(vect_features)
                 back_pos = sides_detected['back']['positions'][-1]
                 left_pos = sides_detected['left']['positions'][0]
                 pos = find_closest_position(back_pos, left_pos)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append(pos)
-                print(j, pose)
+                sorted_positions.append(pos)
                 j += 1
         elif 240 <= sorted_people[j][0] < 720:
             bounding_boxes = sides_detected['left']['bounding_boxes']
@@ -199,11 +204,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 for bnd, pos in zip(bounding_boxes, positions):
                     people_detected[str(j)] = {
                         'bounding_box': [],  # Initialize with an empty list
-                        'position': []  # Initialize with default values, replace with actual values
+                        'position': [],  # Initialize with default values, replace with actual values
+                        'visual_features': []
                     }
+                    people_detected[str(j)]['visual_features'].append(vect_features)
                     people_detected[str(j)]['bounding_box'].append(bnd)
                     people_detected[str(j)]['position'].append(pos)
-                    print(j, pose)
+                    sorted_positions.append(pos)
                     j += 1
             elif 720 <= sorted_people[j][2] < 1200:
                 left_pos = sides_detected['left']['positions'][-1]
@@ -211,11 +218,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 pos = find_closest_position(front_pos, left_pos)
                 people_detected[str(j)] = {
                     'bounding_box': [],  # Initialize with an empty list
-                    'position': []  # Initialize with default values, replace with actual values
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
                 }
+                people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append(pos)
-                print(j, pose)
+                sorted_positions.append(pos)
                 j += 1
         elif 720 <= sorted_people[j][0] < 1200:
             bounding_boxes = sides_detected['front']['bounding_boxes']
@@ -224,11 +233,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 for bnd, pos in zip(bounding_boxes, positions):
                     people_detected[str(j)] = {
                         'bounding_box': [],  # Initialize with an empty list
-                        'position': []  # Initialize with default values, replace with actual values
+                        'position': [],  # Initialize with default values, replace with actual values
+                        'visual_features': []
                     }
+                    people_detected[str(j)]['visual_features'].append(vect_features)
                     people_detected[str(j)]['bounding_box'].append(bnd)
                     people_detected[str(j)]['position'].append(pos)
-                    print(j, pose)
+                    sorted_positions.append(pos)
                     j += 1
             elif 1200 <= sorted_people[j][2] < 1680:
                 front_pos = sides_detected['front']['positions'][-1]
@@ -236,11 +247,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 pos = find_closest_position(front_pos, right_pos)
                 people_detected[str(j)] = {
                     'bounding_box': [],  # Initialize with an empty list
-                    'position': []  # Initialize with default values, replace with actual values
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
                 }
+                people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append(pos)
-                print(j, pose)
+                sorted_positions.append(pos)
                 j += 1
         elif 1200 <= sorted_people[j][0] < 1680:
             bounding_boxes = sides_detected['right']['bounding_boxes']
@@ -249,11 +262,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 for bnd, pos in zip(bounding_boxes, positions):
                     people_detected[str(j)] = {
                         'bounding_box': [],  # Initialize with an empty list
-                        'position': []  # Initialize with default values, replace with actual values
+                        'position': [],  # Initialize with default values, replace with actual values
+                        'visual_features': []
                     }
+                    people_detected[str(j)]['visual_features'].append(vect_features)
                     people_detected[str(j)]['bounding_box'].append(bnd)
                     people_detected[str(j)]['position'].append(pos)
-                    print(j, pose)
+                    sorted_positions.append(pos)
                     j += 1
             elif 1680 <= sorted_people[j][2] < 1920:
                 right_pos = sides_detected['right']['positions'][-1]
@@ -261,11 +276,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                 pos = find_closest_position(back_pos, right_pos)
                 people_detected[str(j)] = {
                     'bounding_box': [],  # Initialize with an empty list
-                    'position': []  # Initialize with default values, replace with actual values
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
                 }
+                people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append(pos)
-                print(j, pose)
+                sorted_positions.append(pos)
                 j += 1
         elif 1680 <= sorted_people[j][0] <= 1920:
             bounding_boxes = sides_detected['back']['bounding_boxes']
@@ -273,13 +290,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
             for bnd, pos in zip(bounding_boxes, positions):
                 people_detected[str(j)] = {
                     'bounding_box': [],  # Initialize with an empty list
-                    'position': []  # Initialize with default values, replace with actual values
+                    'position': [],  # Initialize with default values, replace with actual values
+                    'visual_features': []
                 }
+                people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(bnd)
                 people_detected[str(j)]['position'].append(pos)
-                print(j, pose)
+                sorted_positions.append(pos)
                 j += 1
-    return people_detected
+    return people_detected, sorted_positions
 
 
 def laser_scan2xy(msg):
@@ -480,21 +499,14 @@ def extract_feature_single(model, image, device="cpu"):
     image = image.to(device)
     with torch.no_grad():
         output = model(image)
-
-    if isinstance(output, tuple):
-        # Process each tensor in the tuple
-        processed_output = tuple(tensor.squeeze().detach().cpu() for tensor in output)
-        return processed_output
-    else:
-        # Process the single tensor
-        return output.squeeze().detach().cpu()
+    return output[0].squeeze(dim=0).detach().cpu()
 
 
 def load_and_preprocess_image(image, bounding_box):
     # Validate if the bounding_box is a list with 4 elements (left, upper, right, lower)
     if not isinstance(bounding_box, list) or len(bounding_box) != 4:
         raise ValueError("Bounding box should be a list containing 4 elements (left, upper, right, lower).")
-
+    print(bounding_box)
     # Crop the image based on the bounding box
     cropped_image = image.crop(bounding_box)
 
@@ -531,11 +543,11 @@ def calculate_similarity(query_vector, gallery_vectors):
 
 def global_nearest_neighbor(reference_points, query_points, covariance_matrix):
     distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
-    nearest_indices = np.argmin(distances)
-    if distances[nearest_indices][0] < 0.7:
-        return nearest_indices
-    else:
-        return -1
+    neighbors = []
+    for i, dis in enumerate(distances):
+        if dis < 0.5:
+            neighbors.append(i)
+    return neighbors
 
 
 def state_transition_fn(x, dt):
@@ -638,11 +650,10 @@ if __name__ == '__main__':
         # Read each row of the CSV file
         for row in reader:
             dr_spaam.append(row)
-    print(len(dr_spaam))
 
     data = {}
     # for i in range(36, int(len(scan)/2)):
-    for i in range(170, 171):
+    for i in range(170, 176):
 
         path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
         print(path)
@@ -682,7 +693,6 @@ if __name__ == '__main__':
             people_img = []
             image = np.array(img)
             detected_org = detect_people.detect_person(image, model)
-            print(detected_org)
             for face, side_img in sides.sides.items():
                 if face in FACE_NAMES:
                     cv_image = np.array(side_img)
@@ -701,7 +711,6 @@ if __name__ == '__main__':
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides[face]['positions'] = pose
-                        print(pose)
                         print('-------------------')
                     elif face == 'front':
                         pose = []
@@ -711,7 +720,6 @@ if __name__ == '__main__':
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['front']['positions'] = pose
-                        print(pose)
                         print('-------------------')
                     elif face == 'right':
                         pose = []
@@ -721,7 +729,6 @@ if __name__ == '__main__':
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['right']['positions'] = pose
-                        print(pose)
                         print('-------------------')
                     elif face == 'left':
                         pose = []
@@ -731,14 +738,13 @@ if __name__ == '__main__':
                                 people.append((xy[0], xy[1]))
                                 pose.append((xy[0], xy[1]))
                         dsides['left']['positions'] = pose
-                        print(pose)
                         print('-------------------')
-            measurments = assign_pose2panoramic(img, detected_org, dsides)
+            measurments, positions = assign_pose2panoramic(img, detected_org, dsides)
             print(measurments)
             frame_num = next(counter_gen)
             pp_data = []
             if frame_num == 0:
-                for i in range(len(measurments)):
+                for i in range(0, len(measurments)):
                     person = measurments[str(i)]['position'][0]
                     bounding_boxes = measurments[str(i)]['bounding_box'][0]
                     filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
@@ -766,18 +772,32 @@ if __name__ == '__main__':
                     filter_i.miss_frame = []
                     filter_i.frame_num = frame_num
                     filters.append(filter_i)
-                    preprocced_image = load_and_preprocess_image(img, measurments[str(i)]['bounding_box'][0])
-                    vect = extract_feature_single(model, preprocced_image)
-                    vect_features = vect.view((-1)).numpy()
-                    filters.embedded_feature = vect_features
-                    galleries[str(i)]['features'] = vect_features
-                    galleries[str(i)]['position'] = (person[0], person[1])
-            # else:
-            #     # Predict the next state for each object
-            #     ids = []
-            #     attached = []
-            #     # print(len(filters))
-            #     for filter_i in filters:
+                    filter_i.visual_features = measurments[str(i)]['visual_features'][0]
+            else:
+                # Predict the next state for each object
+                ids = []
+                attached = []
+                # print(len(filters))
+                for filter_i in filters:
+                    print(filter_i.object_id)
+                    filter_i.predict(dt=dt)
+                    covariance_matrix = np.array([[1, 0], [0, 1]])
+                    neighbors = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
+                    max = 0
+                    id = 0
+                    for neighbor in neighbors:
+                        # Calculate similarity scores between the query vector and gallery vectors
+                        similarity_scores = calculate_similarity(filter_i.visual_features,
+                                                                 measurments[str(i)]['visual_features'][0])
+                        print(similarity_scores)
+                        if similarity_scores > max:
+                            max = similarity_scores
+                            id = neighbor
+                    print(max, id)
+                    filter_i.update(measurments[str(id)]['positions'][0])
+                    estimated_state = filter_i.x
+                    estimated_covariance = filter_i.P
+
             #         positions = np.array(measurements)
             #         # Calculate distances between predicted state and frame positions
             #         # distances = np.linalg.norm([filter_i.x[:2]]-positions)
@@ -795,139 +815,3 @@ if __name__ == '__main__':
             #             # print(filter_i.object_id,nearest_measurement)
             #             estimated_state = filter_i.x  # Estimated state after each update
             #             estimated_covariance = filter_i.P
-            #         else:
-            #             nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-            #             natt = True
-            #             for a in attached:
-            #                 if a[0] == nearest_measurement[0] and a[1] == nearest_measurement[1]:
-            #                     natt = False
-            #             if natt:
-            #
-            #                 # print('ob', filter_i.object_id)
-            #                 # print(filter_i.object_id)
-            #                 # Update the state using the nearest neighbor measurement
-            #                 nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-            #                 if filter_i.object_id == 1:
-            #                     print(positions)
-            #                     print(filter_i.x[:2])
-            #                     print(nearest_measurement)
-            #                 attached.append(nearest_measurement)
-            #                 # print('a1', attached)
-            #                 # print(nearest_measurement)
-            #                 filter_i.predict(dt=dt)  # Pass the time step dt
-            #                 filter_i.update(nearest_measurement)
-            #                 # print(filter_i.object_id,nearest_measurement)
-            #                 estimated_state = filter_i.x  # Estimated state after each update
-            #                 estimated_covariance = filter_i.P
-            #                 # print('ff',filter_i.x[:2])
-            #                 # print("Track position:", estimated_state[:2])
-            #             else:
-            #                 # print('ii', filter_i.object_id)
-            #                 filter_i.loss_association_counter += 1
-            #                 filter_i.miss_frame.append('frame '+str(frame_num))
-            #                 # Handle loss of ID and new ID assignments
-            #     # print(frame, mes_seen)
-            #     if len(measurements) > len(attached):
-            #         not_in_attached = [element for element in measurements if
-            #                            all((element != arr).any() for arr in attached)]
-            #         for ms in not_in_attached:
-            #             if len(removed_objects_p) > 0:
-            #                 ms = np.array([[ms[0], ms[1]]])
-            #                 ms_2d = ms.reshape(1, -1)  # Reshape ms to a 2D array with one row
-            #                 positions = np.array(removed_objects_p)
-            #                 # Calculate distances between predicted state and frame positions
-            #                 covariance_matrix = np.array([[1, 0], [0, 1]])
-            #                 nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]],
-            #                                                         covariance_matrix)
-            #                 if nearest_index > -1:
-            #                     filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-            #                                                      fx=state_transition_fn, hx=measurement_fn,
-            #                                                      points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-            #                                                                                    beta=2.,
-            #                                                                                    kappa=-1.0))
-            #                     filter_i.x = [removed_objects_p[nearest_index][0], removed_objects_p[nearest_index][1],
-            #                                   0, 0]
-            #                     filter_i.P = initial_covariance
-            #                     filter_i.dim_x = num_states
-            #
-            #                     # Set process and measurement noise covariance matrices
-            #                     filter_i.Q = Q
-            #                     filter_i.R = R
-            #
-            #                     # Set object ID
-            #                     filter_i.object_id = removed_objects_i[nearest_index]
-            #                     # print('aga',filter_i.object_id)
-            #                     # Initialize loss of measurement association counter
-            #                     filter_i.loss_association_counter = 0
-            #                     estimated_state = filter_i.x  # Estimated state after each update
-            #                     estimated_covariance = filter_i.P
-            #                     filter_i.miss_frame = []
-            #                     filter_i.frame_num = frame_num
-            #                     filters.append(filter_i)
-            #                     removed_objects_i.pop(nearest_index)
-            #                     removed_objects_p.pop(nearest_index)
-            #
-            #             else:
-            #                 filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-            #                                                  fx=state_transition_fn, hx=measurement_fn,
-            #                                                  points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-            #                                                                                beta=2.,
-            #                                                                                kappa=-1.0))
-            #
-            #                 # Set initial state and covariance matrix
-            #                 # print(frame, current_object_id, measurements[ind])
-            #                 filter_i.x = [ms[0], ms[1], 0, 0]
-            #                 filter_i.P = initial_covariance
-            #                 filter_i.dim_x = num_states
-            #
-            #                 # Set process and measurement noise covariance matrices
-            #                 filter_i.Q = Q
-            #                 filter_i.R = R
-            #
-            #                 # Set object ID
-            #                 current_object_id += 1
-            #                 filter_i.object_id = current_object_id
-            #
-            #                 # Initialize loss of measurement association counter
-            #                 filter_i.loss_association_counter = 0
-            #                 estimated_state = filter_i.x  # Estimated state after each update
-            #                 estimated_covariance = filter_i.P
-            #                 filter_i.miss_frame = []
-            #                 filter_i.frame_num = frame_num
-            #                 filters.append(filter_i)
-            #         # print("Track position:", estimated_state[:2])
-            # remove_filters = []
-            # for filter_i in filters:
-            #     # print('check', filter_i.object_id)
-            #     if filter_i.loss_association_counter >= loss_association_threshold:
-            #         if abs(float(filter_i.miss_frame[loss_association_threshold - 1].split(' ')[1]) - float(
-            #                 filter_i.miss_frame[loss_association_threshold - 2].split(' ')[1])) == 1:
-            #             # print('loss', filter_i.object_id)
-            #             # print('loss', frame)
-            #             # Handle loss of ID
-            #             # print(len(filters))
-            #             removed_objects_p.append(filter_i.x[:2])
-            #             removed_objects_i.append(filter_i.object_id)
-            #             remove_filters.append(filter_i)
-            #         else:
-            #             position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-            #             pp = {'id' + str(filter_i.object_id): position}
-            #             # print(pp)
-            #             pp_data.append(pp)
-            #     else:
-            #         position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-            #         pp = {'id' + str(filter_i.object_id): position}
-            #         # print(pp)
-            #         pp_data.append(pp)
-            # yaml_data = {'frame ' + str(frame_num): pp_data}
-            # output_file = 'tracks1.yaml'
-            #
-            # # Open the file in write mode
-            # with open(output_file, 'a') as file:
-            #     # Write the YAML data to the file
-            #     yaml.dump(yaml_data, file)
-            # filters = handle_loss_of_id(filters, remove_filters)
-            # # print(removed_objects_i)
-            # print('-------------------------------------------------------------------------------------------')
-            #
-            #
