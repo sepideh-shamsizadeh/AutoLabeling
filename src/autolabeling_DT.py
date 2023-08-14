@@ -3,7 +3,7 @@ import csv
 import math
 import os
 from math import pi, atan2, hypot, floor
-
+import timm
 import cv2
 import numpy as np
 import torch
@@ -18,6 +18,8 @@ from torchvision.transforms import InterpolationMode
 from filterpy.kalman import UnscentedKalmanFilter
 from scipy.spatial.distance import cdist, mahalanobis
 from filterpy.kalman import MerweScaledSigmaPoints
+from LATransformer.model import LATransformerTest
+
 
 import detect_people
 
@@ -142,8 +144,9 @@ def find_closest_position(pose0, pose1):
         return pose1
 
 
-def assign_pose2panoramic(image, org_detected, sides_detected):
+def assign_pose2panoramic(image, org_detected, sides_detected, model1):
     print('++++++++++++++++++++++++++++++++++')
+    galleries = []
     print(org_detected)
     print(sides_detected)
     people_detected = {}
@@ -168,15 +171,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                     'visual_features': []
                                 }
                                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                                vect = extract_feature_single(model, preprocced_image, "cpu")
+                                vect = extract_feature_single(model1, preprocced_image, "cpu")
                                 vect_features = vect.view((-1)).numpy()
                                 people_detected[str(j)]['visual_features'].append(vect_features)
+                                galleries.append(vect_features)
                                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                                 people_detected[str(j)]['position'].append([pos[0], pos[1]])
                                 people_detected[str(j)]['bounding_box'].append(sorted_people.pop())
                                 sorted_positions.append([pos[0], pos[1]])
                                 j += 1
-
                         elif 240 <= bnd[0] < 480:
                             if 240 <= bnd[2] <= 480:
                                 people_detected[str(j)] = {
@@ -185,9 +188,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                     'visual_features': []
                                 }
                                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                                vect = extract_feature_single(model, preprocced_image, "cpu")
+                                vect = extract_feature_single(model1, preprocced_image, "cpu")
                                 vect_features = vect.view((-1)).numpy()
                                 people_detected[str(j)]['visual_features'].append(vect_features)
+                                galleries.append(vect_features)
                                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                                 people_detected[str(j)]['position'].append([pos[0], pos[1]])
                                 sorted_positions.append([pos[0], pos[1]])
@@ -200,9 +204,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     }
                     if len(sides_detected['left']['positions']) > 0:
                         preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model, preprocced_image, "cpu")
+                        vect = extract_feature_single(model1, preprocced_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
+                        galleries.append(vect_features)
                         back_pos = sides_detected['back']['positions'][-1]
                         left_pos = sides_detected['left']['positions'][0]
                         pos = find_closest_position(back_pos, left_pos)
@@ -212,9 +217,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         j += 1
                     else:
                         preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model, preprocced_image, "cpu")
+                        vect = extract_feature_single(model1, preprocced_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
+                        galleries.append(vect_features)
                         pos = sides_detected['back']['positions'][-1]
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                         people_detected[str(j)]['position'].append([pos[0], pos[1]])
@@ -227,9 +233,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     'visual_features': []
                 }
                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model, preprocced_image, "cpu")
+                vect = extract_feature_single(model1, preprocced_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
+                galleries.append(vect_features)
                 pos = sides_detected['left']['positions'][0]
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append([pos[0], pos[1]])
@@ -247,9 +254,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             'visual_features': []
                         }
                         preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model, preprocced_image, "cpu")
+                        vect = extract_feature_single(model1, preprocced_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
+                        galleries.append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                         people_detected[str(j)]['position'].append([pos[0], pos[1]])
                         sorted_positions.append([pos[0], pos[1]])
@@ -265,9 +273,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -280,9 +289,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -295,9 +305,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     'visual_features': []
                 }
                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model, preprocced_image, "cpu")
+                vect = extract_feature_single(model1, preprocced_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
+                galleries.append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append([pos[0], pos[1]])
                 sorted_positions.append([pos[0], pos[1]])
@@ -314,9 +325,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             'visual_features': []
                         }
                         preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model, preprocced_image, "cpu")
+                        vect = extract_feature_single(model1, preprocced_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
+                        galleries.append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                         people_detected[str(j)]['position'].append([pos[0], pos[1]])
                         sorted_positions.append([pos[0], pos[1]])
@@ -332,9 +344,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -347,9 +360,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -362,9 +376,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     'visual_features': []
                 }
                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model, preprocced_image, "cpu")
+                vect = extract_feature_single(model1, preprocced_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
+                galleries.append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                 people_detected[str(j)]['position'].append([pos[0], pos[1]])
                 sorted_positions.append([pos[0], pos[1]])
@@ -381,9 +396,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                             'visual_features': []
                         }
                         preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model, preprocced_image, "cpu")
+                        vect = extract_feature_single(model1, preprocced_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
+                        galleries.append(vect_features)
                         people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                         people_detected[str(j)]['position'].append([pos[0], pos[1]])
                         sorted_positions.append([pos[0], pos[1]])
@@ -399,9 +415,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -414,9 +431,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                                 'visual_features': []
                             }
                             preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model, preprocced_image, "cpu")
+                            vect = extract_feature_single(model1, preprocced_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
+                            galleries.append(vect_features)
                             people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                             people_detected[str(j)]['position'].append([pos[0], pos[1]])
                             sorted_positions.append([pos[0], pos[1]])
@@ -429,7 +447,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                     'visual_features': []
                 }
                 preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model, preprocced_image, "cpu")
+                vect = extract_feature_single(model1, preprocced_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
@@ -447,14 +465,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected):
                         'visual_features': []
                     }
                     preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                    vect = extract_feature_single(model, preprocced_image, "cpu")
+                    vect = extract_feature_single(model1, preprocced_image, "cpu")
                     vect_features = vect.view((-1)).numpy()
                     people_detected[str(j)]['visual_features'].append(vect_features)
+                    galleries.append(vect_features)
                     people_detected[str(j)]['bounding_box'].append(sorted_people[j])
                     people_detected[str(j)]['position'].append([pos[0], pos[1]])
                     sorted_positions.append([pos[0], pos[1]])
                     j += 1
-    return people_detected, sorted_positions
+    return people_detected, sorted_positions, galleries
 
 
 def laser_scan2xy(msg):
@@ -644,17 +663,17 @@ def sides_points(dr_spaam):
 
 
 def get_activation(name, activation):
-    def hook(model, input, output):
+    def hook(model1, input, output):
         activation[name] = output.detach()
 
     return hook
 
 
-def extract_feature_single(model, image, device="cpu"):
-    model.eval()
+def extract_feature_single(model1, image, device="cpu"):
+    model1.eval()
     image = image.to(device)
     with torch.no_grad():
-        output = model(image)
+        output = model1(image)
     return output[0].squeeze().detach().cpu()
 
 
@@ -796,6 +815,24 @@ if __name__ == '__main__':
         'v0': 245.039671395514
     }
 
+    os.environ['CUDA_VISIBLE_DEVICES'] = ''  # This will make sure no GPU is being used
+    device = "cpu"
+    batch_size = 8
+    gamma = 0.7
+    seed = 42
+
+    # Load ViT
+    vit_base = timm.create_model('vit_base_patch16_224', pretrained=True, num_classes=751)
+    vit_base = vit_base.to(device)
+
+    # Create La-Transformer
+    model1 = LATransformerTest(vit_base, lmbd=8).to(device)
+
+    name = "la_with_lmbd_8"
+    save_path = os.path.join('Weights-20230803T150538Z-001/Weights/net_best.pth')
+    model1.load_state_dict(torch.load(save_path), strict=False)
+    print(model1.eval())
+
     # Set the parameters
     num_states = 4  # Number of states (x, y, vx, vy)
     num_measurements = 2  # Number of measurements (position)
@@ -838,8 +875,7 @@ if __name__ == '__main__':
 
     data = {}
     # for i in range(36, int(len(scan)/2)):
-    for i in range(170, 176):
-
+    for i in range(50, 60):
         path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
         print(path)
         dsides = {'back': {
@@ -924,7 +960,7 @@ if __name__ == '__main__':
                                 pose.append((xy[0], xy[1]))
                         dsides['left']['positions'] = pose
                         print('-------------------')
-            measurments, positions = assign_pose2panoramic(img, detected_org, dsides)
+            measurments, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, model1)
             print(measurments)
             frame_num = next(counter_gen)
             pp_data = []
@@ -958,72 +994,46 @@ if __name__ == '__main__':
                     filter_i.frame_num = frame_num
                     filters.append(filter_i)
                     filter_i.visual_features = measurments[str(i)]['visual_features'][0]
-                    galleries.append(measurments[str(i)]['visual_features'][0])
             else:
                 # Predict the next state for each object
                 ids = []
                 attached = []
                 # print(len(filters))
                 for filter_i in filters:
-                    print(filter_i.object_id)
                     filter_i.predict(dt=dt)
                     covariance_matrix = np.array([[1, 0], [0, 1]])
                     neighbors = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
                     max = 0
                     id = 0
+                    sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
+                    print(sim, indices)
+                    print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
                     if len(neighbors) > 0:
                         gallary = []
                         for neighbor in neighbors:
-                            # Calculate similarity scores between the query vector and gallery vectors
-                            similarity_scores = calculate_similarity(filter_i.visual_features,
-                                                                     measurments[str(neighbor)]['visual_features'][0])
                             gallary.append(measurments[str(neighbor)]['visual_features'][0])
                         sim, indices = calculate_similarity_faiss(filter_i.visual_features, gallary)
-                        print(sim, indices)
-                            # simif similarity_scores > max:
-                            #     max = similarity_scores
-                            #     id = neighbor
-                        print(max, id, filter_i.object_id, measurments[str(id)]['bounding_box'])
-                        if sim < 0.995:
-                            for neighbor in range(len(measurments)):
-                                similarity_scores = calculate_similarity(filter_i.visual_features,
-                                                                         measurments[str(neighbor)]['visual_features'][
-                                                                             0])
-                                if similarity_scores > max:
-                                    max = similarity_scores
-                                    id = neighbor
-                        print(max, id, filter_i.object_id, measurments[str(id)]['bounding_box'])
+                        print(sim, indices,'kkkkkk')
+                        max = sim[0]
+                        if max < 0.95:
+                            sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
+                            print(sim, indices, 'nnnnnnnn')
+
                     else:
                         sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
-                        print(sim, indices)
-                        for neighbor in range(len(measurments)):
-                            similarity_scores = calculate_similarity(filter_i.visual_features,
-                                                                     measurments[str(neighbor)]['visual_features'][0])
-                            if similarity_scores > max:
-                                max = similarity_scores
-                                id = neighbor
+                        print(sim, indices,'rrrrrrr')
 
-                    if sim > 0.995:
-                        print(max, id, filter_i.object_id, measurments[str(id)]['bounding_box'])
+                    for i in range(len(indices)):
+                        if indices[i] not in attached:
+                            id = indices[i]
+                            attached.append(id)
+                            max = sim[i]
+                            print(max)
+                    if max > 0.95:
+                        print(filter_i.object_id, max, id)
                         filter_i.update(measurments[str(id)]['position'][0])
                         estimated_state = filter_i.x
                         estimated_covariance = filter_i.P
+                        filter_i.visual_features = measurments[str(id)]['visual_features'][0]
                     else:
-                        print(max, id, filter_i.object_id, measurments[str(id)]['bounding_box'])
-                        #         positions = np.array(measurements)
-            #         # Calculate distances between predicted state and frame positions
-            #         # distances = np.linalg.norm([filter_i.x[:2]]-positions)
-            #         # Find the index of the nearest neighbor
-            #         covariance_matrix = np.array([[1, 0], [0, 1]])
-            #         nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
-            #
-            #         if len(attached) == 0:
-            #             nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-            #             attached.append(nearest_measurement)
-            #             # print('a1', attached)
-            #             # print(nearest_measurement)
-            #             filter_i.predict(dt=dt)  # Pass the time step dt
-            #             filter_i.update(nearest_measurement)
-            #             # print(filter_i.object_id,nearest_measurement)
-            #             estimated_state = filter_i.x  # Estimated state after each update
-            #             estimated_covariance = filter_i.P
+                        print(str(filter_i.object_id) + 'is missed')
