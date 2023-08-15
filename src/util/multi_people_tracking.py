@@ -93,7 +93,7 @@ def tracking(measurments, positions, galleries, filters, frame_num, missed_ids,
                     else:
                         i = -1
                         break
-            if i > 0:
+            if i >= 0:
                 attached.append(ids[i])
                 filter_i.update(measurments[str(ids[i])]['position'][0])
                 filter_i.visual_features = measurments[str(ids[i])]['visual_features'][0]
