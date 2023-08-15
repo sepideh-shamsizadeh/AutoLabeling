@@ -26,3 +26,4 @@ src/auto_calibration_tools/calibration_data/one_shot_object_detector.pth
 
 src/one_shot_object_detector.pth
 src/__pycache__/*
+src/util/__pycache__/
