@@ -59,67 +59,48 @@ def tracking(measurments, positions, galleries, filters, frame_num, missed_ids,
             filters.append(filter_i)
     else:
         # Predict the next state for each object
-        ids = []
         attached = []
         # print(len(filters))
         for filter_i in filters:
+            ids = []
+            neighbor_flag = False
             filter_i.predict(dt=dt)
             covariance_matrix = np.array([[1, 0], [0, 1]])
             neighbors = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
-            max = 0
-            id = 0
-            sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
-            print(sim, indices)
-            print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
             if len(neighbors) > 0:
                 gallary = []
                 for neighbor in neighbors:
                     gallary.append(measurments[str(neighbor)]['visual_features'][0])
                 sim, indices = calculate_similarity_faiss(filter_i.visual_features, gallary)
-                print(neighbors, 'dddffddddddddddddd')
-                print(sim, indices, 'kkkkkk')
-                if len(attached) > 0:
-                    for i in range(len(indices)):
-                        if neighbors[indices[i]] not in attached:
-                            id = neighbors[indices[i]]
-                            attached.append(id)
-                            max = sim[i]
-                            print(max)
-                            break
-                else:
-                    id = neighbors[indices[0]]
-                    attached.append(id)
-                    max = sim[0]
-                    print(max)
-
-                max = sim[0]
-                if max < 0.95:
+                for index in indices:
+                    ids.append(neighbors[index])
+                if sim[0] < 0.95:
                     sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
-                    print(sim, indices, 'nnnnnnnn')
-
+                    ids = indices
+                else:
+                    neighbor_flag = True
             else:
                 sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
-                print(sim, indices, 'rrrrrrr')
-
-            if len(attached) > 0:
-                for i in range(len(indices)):
-                    if indices[i] not in attached:
-                        id = indices[i]
-                        attached.append(id)
-                        max = sim[i]
-                        print(max)
+                ids = indices
+            i = 0
+            while ids[i] in attached:
+                if sim[i] > 0.95:
+                    i += 1
+                else:
+                    if neighbor_flag:
+                        sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
+                        ids = indices
+                    else:
+                        i = -1
                         break
-            else:
-                id = neighbors[indices[0]]
-                attached.append(id)
-                max = sim[0]
-                print(max)
-            if max > 0.95:
-                print(filter_i.object_id, max, id)
-                filter_i.update(measurments[str(id)]['position'][0])
-                estimated_state = filter_i.x
+            if i > 0:
+                attached.append(ids[i])
+                filter_i.update(measurments[str(ids[i])]['position'][0])
+                filter_i.visual_features = measurments[str(ids[i])]['visual_features'][0]
+                # print(filter_i.object_id,nearest_measurement)
+                estimated_state = filter_i.x  # Estimated state after each update
                 estimated_covariance = filter_i.P
-                filter_i.visual_features = measurments[str(id)]['visual_features'][0]
             else:
-                print(str(filter_i.object_id) + 'is missed')
+                print(str(filter_i.object_id)+' is missed')
+
     return filters, missed_ids, removed_objects_p, removed_objects_f, removed_objects_id
