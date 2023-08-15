@@ -176,11 +176,12 @@ def selected_point(side_xy, side, side_info, face, detected, side_img):
             x, y = x_y[0]
         if 0 < abs(x) <= 7 and 0 < abs(x) <= 7:
             XY_people[ind] = (x, y)
-            print(ind, person, (x, y))
     for xy in XY_people:
         x, y = check_xy(xy, face)
         u, v = convert_robotF2imageF(x, y, side_info)
     #         draw_circle_bndBOX(u, v, side_img)
+        print((x, y))
+
     return XY_people
 
 
