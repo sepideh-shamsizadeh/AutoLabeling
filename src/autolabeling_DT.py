@@ -12,6 +12,7 @@ import detect_people
 
 detection_model = detect_people.load_model()
 
+
 def counter():
     num = 0
     while True:
@@ -152,7 +153,7 @@ for i in range(50, 60):
                     print('-------------------')
         measurments, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
-        filters, missed_ids, removed_objects_p, removed_objects_f, removed_objects_id = tracking(
+        filters, missed_ids, removed_objects_p, missed_filters, current_id = tracking(
             measurments, positions, galleries, filters, frame_num, missed_ids,
-            loss_association_threshold, removed_objects_p, removed_objects_f, removed_objects_id
+            loss_association_threshold, missed_filters, current_id
         )
