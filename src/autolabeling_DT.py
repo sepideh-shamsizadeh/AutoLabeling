@@ -67,8 +67,10 @@ removed_objects_p = []
 removed_objects_id = []
 removed_objects_f = []
 filters = []
+missed_filters = []
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
+current_id = 0
 for i in range(50, 60):
     path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
     print(path)
@@ -151,9 +153,8 @@ for i in range(50, 60):
                             pose.append((xy[0], xy[1]))
                     dsides['left']['positions'] = pose
                     print('-------------------')
-        measurments, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, feature_model)
+        measurements, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
-        filters, missed_ids, removed_objects_p, missed_filters, current_id = tracking(
-            measurments, positions, galleries, filters, frame_num, missed_ids,
-            loss_association_threshold, missed_filters, current_id
+        filters, missed_filters, current_id = tracking(
+            measurements, positions, galleries, filters, frame_num, missed_filters, current_id
         )

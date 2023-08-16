@@ -1,6 +1,7 @@
 from src.util.visual_feature_utils import *
 from src.util.laser2image_utils import *
 
+
 def assign_pose2panoramic(image, org_detected, sides_detected, model1):
     print('++++++++++++++++++++++++++++++++++')
     galleries = []
@@ -28,8 +29,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                                 'position': [],  # Initialize with default values, replace with actual values
                                 'visual_features': []
                             }
-                            preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model1, preprocced_image, "cpu")
+                            preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                            vect = extract_feature_single(model1, preprocessed_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             galleries.append(vect_features)
@@ -45,8 +46,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                                 'position': [],  # Initialize with default values, replace with actual values
                                 'visual_features': []
                             }
-                            preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                            vect = extract_feature_single(model1, preprocced_image, "cpu")
+                            preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                            vect = extract_feature_single(model1, preprocessed_image, "cpu")
                             vect_features = vect.view((-1)).numpy()
                             people_detected[str(j)]['visual_features'].append(vect_features)
                             galleries.append(vect_features)
@@ -61,8 +62,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         'visual_features': []
                     }
                     if len(sides_detected['left']['positions']) > 0:
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -74,8 +75,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         sorted_positions.append([pos[0], pos[1]])
                         j += 1
                     else:
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -90,8 +91,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     'position': [],  # Initialize with default values, replace with actual values
                     'visual_features': []
                 }
-                preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model1, preprocced_image, "cpu")
+                preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                vect = extract_feature_single(model1, preprocessed_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 galleries.append(vect_features)
@@ -112,8 +113,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         'position': [],  # Initialize with default values, replace with actual values
                         'visual_features': []
                     }
-                    preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                    vect = extract_feature_single(model1, preprocced_image, "cpu")
+                    preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                    vect = extract_feature_single(model1, preprocessed_image, "cpu")
                     vect_features = vect.view((-1)).numpy()
                     people_detected[str(j)]['visual_features'].append(vect_features)
                     galleries.append(vect_features)
@@ -131,8 +132,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -147,8 +148,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -163,8 +164,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     'position': [],  # Initialize with default values, replace with actual values
                     'visual_features': []
                 }
-                preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model1, preprocced_image, "cpu")
+                preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                vect = extract_feature_single(model1, preprocessed_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 galleries.append(vect_features)
@@ -184,8 +185,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         'position': [],  # Initialize with default values, replace with actual values
                         'visual_features': []
                     }
-                    preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                    vect = extract_feature_single(model1, preprocced_image, "cpu")
+                    preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                    vect = extract_feature_single(model1, preprocessed_image, "cpu")
                     vect_features = vect.view((-1)).numpy()
                     people_detected[str(j)]['visual_features'].append(vect_features)
                     galleries.append(vect_features)
@@ -203,8 +204,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -219,8 +220,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -235,8 +236,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     'position': [],  # Initialize with default values, replace with actual values
                     'visual_features': []
                 }
-                preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model1, preprocced_image, "cpu")
+                preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                vect = extract_feature_single(model1, preprocessed_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 galleries.append(vect_features)
@@ -256,8 +257,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         'position': [],  # Initialize with default values, replace with actual values
                         'visual_features': []
                     }
-                    preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                    vect = extract_feature_single(model1, preprocced_image, "cpu")
+                    preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                    vect = extract_feature_single(model1, preprocessed_image, "cpu")
                     vect_features = vect.view((-1)).numpy()
                     people_detected[str(j)]['visual_features'].append(vect_features)
                     galleries.append(vect_features)
@@ -275,8 +276,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -291,8 +292,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                             'position': [],  # Initialize with default values, replace with actual values
                             'visual_features': []
                         }
-                        preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                        vect = extract_feature_single(model1, preprocced_image, "cpu")
+                        preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                        vect = extract_feature_single(model1, preprocessed_image, "cpu")
                         vect_features = vect.view((-1)).numpy()
                         people_detected[str(j)]['visual_features'].append(vect_features)
                         galleries.append(vect_features)
@@ -307,8 +308,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     'position': [],  # Initialize with default values, replace with actual values
                     'visual_features': []
                 }
-                preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model1, preprocced_image, "cpu")
+                preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                vect = extract_feature_single(model1, preprocessed_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 people_detected[str(j)]['bounding_box'].append(sorted_people[j])
@@ -326,8 +327,8 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     'position': [],  # Initialize with default values, replace with actual values
                     'visual_features': []
                 }
-                preprocced_image = load_and_preprocess_image(image, sorted_people[j])
-                vect = extract_feature_single(model1, preprocced_image, "cpu")
+                preprocessed_image = load_and_preprocess_image(image, sorted_people[j])
+                vect = extract_feature_single(model1, preprocessed_image, "cpu")
                 vect_features = vect.view((-1)).numpy()
                 people_detected[str(j)]['visual_features'].append(vect_features)
                 galleries.append(vect_features)

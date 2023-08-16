@@ -62,8 +62,7 @@ def find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached
     return i
 
 
-def tracking(measurements, positions, galleries, filters, frame_num, missed_ids,
-             loss_association_threshold, missed_filters, current_id):
+def tracking(measurements, positions, galleries, filters, frame_num, missed_filters, current_id):
     print('frame num', str(frame_num))
     # Set the parameters
     num_states = 4  # Number of states (x, y, vx, vy)
@@ -136,4 +135,4 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_ids,
                     filters.append(filter_i)
                     print('new id' + str(current_id))
 
-    return filters, missed_ids, missed_filters, current_id
+    return filters, missed_filters, current_id
