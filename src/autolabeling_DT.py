@@ -108,7 +108,7 @@ for i in range(50, 60):
         people = []
         people_img = []
         image = np.array(img)
-        detected_org = detect_people.detect_person(image, detection_model)
+        detected_org, objects_poses = detect_people.detect_person(image, detection_model)
         for face, side_img in sides.sides.items():
             if face in FACE_NAMES:
                 cv_image = np.array(side_img)

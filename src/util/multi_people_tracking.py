@@ -77,13 +77,8 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
 
     # Set initial state and covariance matrix
     initial_covariance = np.eye(num_states) * 1.0  # Initial covariance matrix
-
-    # Create filters for each object
-    tracks = {}
-    current_object_id = 0
     print(measurements)
 
-    pp_data = []
     if frame_num == 0:
         current_id = 0
         for i in range(0, len(measurements)):
@@ -97,7 +92,7 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
         ids = []
         for k, filter_i in enumerate(filters):
             i = find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached)
-            if i >= 0:
+            if 0 <= i < len(ids):
                 attached.append(ids[i])
                 filter_i.update(measurements[str(ids[i])]['position'][0])
                 filter_i.visual_features = measurements[str(ids[i])]['visual_features'][0]
