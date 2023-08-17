@@ -71,7 +71,7 @@ missed_filters = []
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(50, 60):
+for i in range(50, 65):
     path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
@@ -112,7 +112,7 @@ for i in range(50, 60):
         for face, side_img in sides.sides.items():
             if face in FACE_NAMES:
                 cv_image = np.array(side_img)
-                detected = detect_people.detect_person(cv_image, detection_model)
+                detected, objects_pose = detect_people.detect_person(cv_image, detection_model)
                 print(face)
                 sorted_detected = sorted(detected, key=lambda x: x[0])
                 dsides[face]['bounding_boxes'] = sorted_detected

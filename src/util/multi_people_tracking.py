@@ -59,7 +59,7 @@ def find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached
             else:
                 i = -1
                 break
-    return i
+    return i, ids
 
 
 def tracking(measurements, positions, galleries, filters, frame_num, missed_filters, current_id):
@@ -91,14 +91,13 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
         attached = []
         ids = []
         for k, filter_i in enumerate(filters):
-            i = find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached)
+            i, ids = find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached)
             if 0 <= i < len(ids):
                 attached.append(ids[i])
                 filter_i.update(measurements[str(ids[i])]['position'][0])
                 filter_i.visual_features = measurements[str(ids[i])]['visual_features'][0]
                 # print(filter_i.object_id,nearest_measurement)
-                x = measurements.pop(ids[i])
-                print(x)
+                measurements.pop(str(ids[i]))
                 estimated_state = filter_i.x  # Estimated state after each update
                 estimated_covariance = filter_i.P
 
@@ -108,8 +107,9 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
                 filters.pop(k)
         ind = 0
         while ind < len(measurements):
+            id_dic = keys = measurements.keys()
             for k, mfilter_i in enumerate(missed_filters):
-                i = find_tracker_newF(mfilter_i, positions, measurements, dt, galleries, attached)
+                i, ids = find_tracker_newF(mfilter_i, positions, measurements, dt, galleries, attached)
                 if i >= 0:
                     attached.append(ids[i])
                     mfilter_i.update(measurements[str(ids[i])]['position'][0])
@@ -124,10 +124,12 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
                     ind += 1
                     print('find person with id' + mfilter_i.object_id)
                 else:
-                    current_id += 1
-                    filter_i = creat_new_filter(measurements[str(ind)], current_id, initial_covariance, num_states,
+                    filter_i = creat_new_filter(measurements[list(id_dic)[ind]], current_id, initial_covariance, num_states,
                                                 num_measurements, dt, Q, R)
+                    measurements.pop(list(id_dic)[ind])
                     filters.append(filter_i)
                     print('new id' + str(current_id))
+                    current_id += 1
+
 
     return filters, missed_filters, current_id

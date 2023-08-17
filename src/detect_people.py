@@ -120,7 +120,7 @@ def detect_person(img0, model):
 
 
 if __name__ == '__main__':
-    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data0/image_149.jpg')  # BGR
+    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_64.jpg')  # BGR
     # cv2.imshow("image", img0)
     # cv2.waitKey(0)
     model = load_model()
