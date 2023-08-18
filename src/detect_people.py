@@ -18,7 +18,6 @@ from yolov7.utils.plots import plot_one_box
 from yolov7.utils.torch_utils import select_device, time_synchronized, load_classifier, TracedModel
 
 
-
 def load_model():
     weights = 'yolov7.pt'
     imgsz = 640
@@ -42,6 +41,7 @@ def load_model():
 
 def detect_person(img0, model):
     poses = []
+    obejcts_poses = []
     imgsz = 640
     conf_thres = 0.7
     iou_thres = 0.45
@@ -107,15 +107,20 @@ def detect_person(img0, model):
                     label = f'{names[int(cls)]} {conf:.2f}'
                     plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
                     poses.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
+                else:
+                    label = f'{names[int(cls)]} {conf:.2f}'
+                    plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
+                    obejcts_poses.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
+
     # cv2.imshow("image", img0)
     # cv2.imwrite('/home/sepid/Pictures/output.jpg', img0)
     # cv2.waitKey(0)
     # print(poses)
-    return poses
+    return poses, obejcts_poses
 
 
 if __name__ == '__main__':
-    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data0/image_149.jpg')  # BGR
+    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_64.jpg')  # BGR
     # cv2.imshow("image", img0)
     # cv2.waitKey(0)
     model = load_model()

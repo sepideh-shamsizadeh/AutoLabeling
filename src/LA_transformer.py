@@ -1,32 +1,13 @@
 import os
-import time
-import random
-import zipfile
-from itertools import chain
 
-import timm
 import numpy as np
-from PIL import Image
-from tqdm import tqdm
-from collections import OrderedDict
-
+import timm
 import torch
-import torch.nn as nn
-from torch.nn import init
-import torch.optim as optim
-from torchvision import models
-import torch.nn.functional as F
-from torch.autograd import Variable
-from torch.optim.lr_scheduler import StepLR
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, Dataset
+from PIL import Image
+from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
-from LATransformer.model import ClassBlock, LATransformer, LATransformerTest
-from LATransformer.utils import save_network, update_summary, get_id
-from LATransformer.metrics import rank1, rank5, rank10, calc_map
-
-import faiss
+from LATransformer.model import LATransformerTest
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''  # This will make sure no GPU is being used
 device = "cpu"

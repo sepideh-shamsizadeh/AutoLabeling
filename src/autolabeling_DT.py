@@ -1,120 +1,16 @@
+import os
 import ast
 import csv
-import math
-import os
-from math import pi, atan2, hypot, floor
-
-import cv2
-import numpy as np
-import torch
-import yaml
+import timm
 from PIL import Image
-from numpy import clip
-from scipy.spatial.distance import cdist, mahalanobis
-from torchvision import transforms
-from torchvision.transforms import InterpolationMode
-from filterpy.kalman import UnscentedKalmanFilter
-from scipy.spatial.distance import cdist, mahalanobis
-from filterpy.kalman import MerweScaledSigmaPoints
-
+from LATransformer.model import LATransformerTest
+from util.multi_people_tracking import tracking
+from util.cube_projection import CubeProjection
+from util.camera_info import get_info
+from util.assign_pose2panoramic import *
 import detect_people
 
-model = detect_people.load_model()
-
-
-class CubeProjection:
-    def __init__(self, imgIn, output_path):
-        self.output_path = output_path
-        self.imagin = imgIn
-        self.sides = {
-            'back': None,
-            'left': None,
-            'front': None,
-            'right': None,
-            'top': None,
-            'bottom': None
-        }
-
-    def cube_projection(self):
-        imgIn = self.imagin
-        inSize = imgIn.size
-        faceSize = int(inSize[0] / 4)
-
-        FACE_NAMES = {
-            0: 'back',
-            1: 'left',
-            2: 'front',
-            3: 'right',
-            4: 'top',
-            5: 'bottom'
-        }
-
-        for face in range(6):
-            imgOut = Image.new('RGB', (faceSize, faceSize), 'black')
-            self.convertFace(imgIn, imgOut, face)
-            if self.output_path != '':
-                imgOut.save(self.output_path + FACE_NAMES[face] + '.jpg')
-            else:
-                self.sides[FACE_NAMES[face]] = imgOut
-
-    def outImg2XYZ(self, i, j, faceIdx, faceSize):
-        a = 2.0 * float(i) / faceSize
-        b = 2.0 * float(j) / faceSize
-
-        if faceIdx == 0:  # back
-            (x, y, z) = (-1.0, 1.0 - a, 1.0 - b)
-        elif faceIdx == 1:  # left
-            (x, y, z) = (a - 1.0, -1.0, 1.0 - b)
-        elif faceIdx == 2:  # front
-            (x, y, z) = (1.0, a - 1.0, 1.0 - b)
-        elif faceIdx == 3:  # right
-            (x, y, z) = (1.0 - a, 1.0, 1.0 - b)
-        elif faceIdx == 4:  # top
-            (x, y, z) = (b - 1.0, a - 1.0, 1.0)
-        elif faceIdx == 5:  # bottom
-            (x, y, z) = (1.0 - b, a - 1.0, -1.0)
-        return (x, y, z)
-
-    def convertFace(self, imgin, imgout, faceIdx):
-        inSize = imgin.size
-        print(inSize)
-        outsize = imgout.size
-        inpix = imgin.load()
-        outpix = imgout.load()
-        facesize = outsize[0]
-
-        for xout in range(facesize):
-            for yout in range(facesize):
-                (x, y, z) = self.outImg2XYZ(xout, yout, faceIdx, facesize)
-                theta = atan2(y, x)  # range -pi to pi
-                r = hypot(x, y)
-                phi = atan2(z, r)  # range -pi/2 to pi/2
-
-                # source img coords
-                uf = 0.5 * inSize[0] * (theta + pi) / pi
-                vf = 0.5 * inSize[0] * (pi / 2 - phi) / pi
-
-                # Use bilinear interpolation between the four surrounding pixels
-                ui = floor(uf)  # coord of pixel to bottom left
-                vi = floor(vf)
-                u2 = ui + 1  # coords of pixel to top right
-                v2 = vi + 1
-                mu = uf - ui  # fraction of way across pixel
-                nu = vf - vi
-
-                # Pixel values of four corners
-                A = inpix[int(ui % inSize[0]), int(clip(vi, 0, inSize[1] - 1))]
-                B = inpix[int(u2 % inSize[0]), int(clip(vi, 0, inSize[1] - 1))]
-                C = inpix[int(ui % inSize[0]), int(clip(v2, 0, inSize[1] - 1))]
-                D = inpix[int(u2 % inSize[0]), int(clip(v2, 0, inSize[1] - 1))]
-
-                # interpolate
-                (r, g, b) = (
-                    A[0] * (1 - mu) * (1 - nu) + B[0] * (mu) * (1 - nu) + C[0] * (1 - mu) * nu + D[0] * mu * nu,
-                    A[1] * (1 - mu) * (1 - nu) + B[1] * (mu) * (1 - nu) + C[1] * (1 - mu) * nu + D[1] * mu * nu,
-                    A[2] * (1 - mu) * (1 - nu) + B[2] * (mu) * (1 - nu) + C[2] * (1 - mu) * nu + D[2] * mu * nu)
-
-                outpix[xout, yout] = (int(round(r)), int(round(g)), int(round(b)))
+detection_model = detect_people.load_model()
 
 
 def counter():
@@ -124,641 +20,141 @@ def counter():
         num += 1
 
 
-def check_one_label(org_detected, sides_detected):
-    people_detected = []
-    boundings = []
-    sorted_list = sorted(org_detected, key=lambda x: x[0])
-    for value in sorted_list:
-        if 0 <= value[0] < 240 or 1680 <= value[0] <= 1920:
-            bounding_boxes = sides_detected['back']['bounding_boxes']
-            positions = sides_detected['back']['positions']
-        elif 240 <= value[0] < 720:
-            bounding_boxes = sides_detected['left']['bounding_boxes']
-            positions = sides_detected['left']['positions']
-        elif 720 <= value[0] < 1200:
-            bounding_boxes = sides_detected['front']['bounding_boxes']
-            positions = sides_detected['front']['positions']
-        elif 1200 <= value[0] < 1680:
-            bounding_boxes = sides_detected['right']['bounding_boxes']
-            positions = sides_detected['right']['positions']
+FACE_NAMES = ['back', 'front', 'left', 'right']
+back_info, right_info, left_info, front_info = get_info()
 
-    return people_detected, boundings
+os.environ['CUDA_VISIBLE_DEVICES'] = ''  # This will make sure no GPU is being used
+device = "cpu"
+batch_size = 8
+gamma = 0.7
+seed = 42
 
+# Load ViT
+vit_base = timm.create_model('vit_base_patch16_224', pretrained=True, num_classes=751)
+vit_base = vit_base.to(device)
 
-def laser_scan2xy(msg):
-    angle_min = -3.140000104904175
-    angle_increment = 0.005799999926239252
-    num_ranges = len(msg)
-    xy_points = []
+# Create La-Transformer
+feature_model = LATransformerTest(vit_base, lmbd=8).to(device)
 
-    for j in range(num_ranges):
-        angle = angle_min + j * angle_increment
-        r = float(msg[j])
-        # converted_angle = math.degrees(angle)
+name = "la_with_lmbd_8"
+save_path = os.path.join('Weights-20230803T150538Z-001/Weights/net_best.pth')
+feature_model.load_state_dict(torch.load(save_path), strict=False)
+print(feature_model.eval())
 
-        if not math.isinf(r) and r > 0.1:
-            x = r * math.cos(angle)
-            y = r * math.sin(angle)
-            xy_points.append((x, y))
-    back, left, right, front = sides_points(xy_points)
-    return back, left, right, front
+counter_gen = counter()
 
+scan = []
+with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/scan.csv', 'r') as file:
+    # Create a CSV reader object
+    reader = csv.reader(file)
+    # Read each row of the CSV file
+    for row in reader:
+        image_id = int(row[0])  # Extract the image ID from the first column
+        ranges = [float(value) for value in row[1:]]  # Extract th
+        scan.append(ranges)
 
-def convert_robotF2imageF(tmpx, tmpy, side_info):
-    H = side_info['H']
-    fu = side_info['fu']
-    fv = side_info['fv']
-    u0 = side_info['u0']
-    v0 = side_info['v0']
-    Zc = H[4] * tmpx + H[5] * tmpy + H[8]
-    u = ((fu * H[0] + u0 * H[4]) * tmpx + (fu * H[1] + u0 * H[5]) * tmpy + fu * H[6] + u0 * H[8]) / Zc
-    v = ((fv * H[2] + v0 * H[4]) * tmpx + (fv * H[3] + v0 * H[5]) * tmpy + fv * H[7] + v0 * H[8]) / Zc
-    return [u, v]
+dr_spaam = []
+with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/drspaam_data2.csv', 'r') as file:
+    # Create a CSV reader object
+    reader = csv.reader(file)
+    # Read each row of the CSV file
+    for row in reader:
+        dr_spaam.append(row)
 
-
-def check_intersection(d_bound, point, flag):
-    if flag:
-        offset = 15
-    else:
-        offset = 30
-    if d_bound[0] < point[0] < d_bound[2]:
-        if d_bound[1] < point[1] < d_bound[3]:
-            return True
-        elif abs(d_bound[3] - point[1]) <= offset:
-            return True
-    elif abs(d_bound[0] - point[0]) <= offset or abs(point[0] - d_bound[2]) <= offset:
-        if d_bound[1] < point[1] < d_bound[3]:
-            return True
-        elif abs(d_bound[3] - point[1]) <= offset:
-            return True
-    return False
-
-
-def distance(xy):
-    # Calculate the Euclidean distance between two points
-    return math.sqrt((xy[0] - 0) ** 2 + (xy[1] - 0) ** 2)
-
-
-def check_points(x_y):
-    minimum = (float('inf'), float('inf'))
-    for xy in x_y:
-        if distance(xy) < distance(minimum):
-            minimum = xy
-    return minimum
-
-
-def check_xy(xy, face):
-    x = xy[0]
-    y = xy[1]
-    if face == 'back':
-        if xy[0] < 1.25 and abs(xy[1]) < 1.25:
-            x = xy[0] + 0.5
-    elif face == 'front':
-        if abs(xy[0]) < 1.25 and abs(xy[1]) < 1.25:
-            x = xy[0] - 0.3
-    elif face == 'left':
-        if abs(xy[0]) < 1.25 and abs(xy[1]) < 1.25:
-            y = xy[1] - 1
-    elif face == 'right':
-        if abs(xy[0]) < 1.25 and abs(xy[1]) < 1.25:
-            y = xy[1] + 1
-    return x, y
-
-
-def selected_point(side_xy, side, side_info, face, detected):
-    print(face)
-    XY_people = []
-    print(detected)
-    for ind, person in enumerate(detected):
-        flag = False
-        p = []
-        x_y = []
-        for xy in side_xy:
-            x, y = check_xy(xy, face)
-            u, v = convert_robotF2imageF(x, y, side_info)
-            if u < 0:
-                u = 0
-            if v < 0:
-                v = 0
-            if check_intersection(person, (u, v), False):
-                flag = True
-                p.append((u, v))
-                x_y.append((xy[0], xy[1]))
-
-        x = 0
-        y = 0
-        # print('xy', x_y)
-        if not flag:
-            for xy in side:
-                x, y = check_xy(xy, face)
-                u, v = convert_robotF2imageF(x, y, side_info)
-                if v > 480:
-                    v = 479
-                if face == 'left':
-                    u += 50
-                    v -= 40
-                if check_intersection(person, (u, v), True):
-                    p.append((u, v))
-                    x_y.append((xy[0], xy[1]))
-        x = 0
-        y = 0
-        if len(p) > 1:
-            for i, pr in enumerate(p):
-                if pr in XY_people:
-                    x_y.pop(i)
-            # print(x_y)
-            x, y = check_points(x_y)
-        elif len(p) == 1:
-            x, y = x_y[0]
-        if x != 0 and y != 0:
-            XY_people.append((x, y))
-    for xy in XY_people:
-        x, y = check_xy(xy, face)
-        u, v = convert_robotF2imageF(x, y, side_info)
-    return XY_people
-
-
-def draw_circle_bndBOX(u, v, img):
-    cv2.circle(img, (int(u), int(v)), 10, (0, 0, 255), 3)
-    cv2.imshow('image', img)
-    cv2.waitKey(0)
-
-
-def write_output(people, fid, file_name):
-    data = []
-    for k, p in enumerate(people):
-        position = {'x': p[0], 'y': p[1]}
-        pp = {'id' + str(k): position}
-        data.append(pp)
-    yaml_data = {'frame ' + str(fid): data}
-    output_file = file_name
-
-    # Open the file in write mode
-    with open(output_file, 'a') as file:
-        # Write the YAML data to the file
-        yaml.dump(yaml_data, file)
-
-
-def sides_points(dr_spaam):
-    back_xy = []
-    left_xy = []
-    front_xy = []
-    right_xy = []
-    for d in dr_spaam:
-        # dr_value = tuple_of_floats = ast.literal_eval(d)
-        x = d[0]
-        y = d[1]
-        if y >= 0:
-            if x > 0 and x >= y:
-                back_xy.append((x, y))
-            elif 0 < x < y:
-                right_xy.append((x, y))
-            elif x < 0 and abs(x) < y:
-                right_xy.append((x, y))
-            elif x < 0 and abs(x) >= y:
-                front_xy.append((x, y))
-        else:
-            if x > 0 and x >= abs(y):
-                back_xy.append((x, y))
-            elif 0 < x < abs(y):
-                left_xy.append((x, y))
-            elif x < 0 and abs(x) < abs(y):
-                left_xy.append((x, y))
-            elif x < 0 and abs(x) >= abs(y):
-                front_xy.append((x, y))
-    return back_xy, left_xy, right_xy, front_xy
-
-
-def get_activation(name, activation):
-    def hook(model, input, output):
-        activation[name] = output.detach()
-
-    return hook
-
-
-def extract_feature_single(model, image, device):
-    model.eval()
-    image = image.to(device)
-    with torch.no_grad():
-        output = model(image)
-    return output.squeeze().detach().cpu()
-
-
-def load_and_preprocess_image(image, bounding_box):
-    # Validate if the bounding_box is a list with 4 elements (left, upper, right, lower)
-    if not isinstance(bounding_box, list) or len(bounding_box) != 4:
-        raise ValueError("Bounding box should be a list containing 4 elements (left, upper, right, lower).")
-
-    # Crop the image based on the bounding box
-    cropped_image = image.crop(bounding_box)
-
-    transform_list = [
-        transforms.Resize((224, 224), interpolation=InterpolationMode.BICUBIC),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]
-    transform = transforms.Compose(transform_list)
-
-    # Convert the cropped image to RGB and apply the transformations
-    preprocessed_image = transform(cropped_image).unsqueeze(0)  # Add batch dimension
-
-    return preprocessed_image
-
-
-def load_and_preprocess_images(image1_path, image2_path):
-    image1 = load_and_preprocess_image(image1_path)
-    image2 = load_and_preprocess_image(image2_path)
-    return image1, image2
-
-
-def calculate_similarity(query_vector, gallery_vectors):
-    # Normalize the query vector
-    query_vector = query_vector / np.linalg.norm(query_vector)
-
-    # Normalize the gallery vectors
-    gallery_vectors = gallery_vectors / np.linalg.norm(gallery_vectors)
-
-    # Perform cosine similarity between query and gallery vectors
-    similarity_scores = np.dot(query_vector, gallery_vectors.T)
-    return similarity_scores
-
-
-def global_nearest_neighbor(reference_points, query_points, covariance_matrix):
-    distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
-    nearest_indices = np.argmin(distances)
-    if distances[nearest_indices][0] < 0.7:
-        return nearest_indices
-    else:
-        return -1
-
-
-def state_transition_fn(x, dt):
-    # Implement the state transition function
-    # x: current state vector [x, y, vx, vy]
-    # dt: time step
-    # Return the predicted state vector
-    # Example: simple constant velocity model
-    return np.array([x[0] + x[2] * dt, x[1] + x[3] * dt, x[2], x[3]])
-
-
-# Define the measurement function
-def measurement_fn(x):
-    # Implement the measurement function
-    # x: current state vector [x, y, vx, vy]
-    # Return the measurement vector
-    # Example: position measurement
-    return x[:2]
-
-
-def handle_loss_of_id(filters, remove_filters):
-    # Remove the filter from the list of filters
-    for f in remove_filters:
-        # print(f.object_id)
-        filters.remove(f)
-    return filters
-
-
-if __name__ == '__main__':
-    FACE_NAMES = ['back', 'front', 'left', 'right']
-    counter_gen = counter()
-    back_info = {
-        'H': np.array([-1.3272, -7.0239, -0.13689, 0.43081, 7.0104, -1.2212, -0.047192, 8.2577, -0.77688]),
-        'fu': 250.001420127782,
-        'fv': 253.955300723887,
-        'u0': 239.731339559399,
-        'v0': 246.917074981568
+data = {}
+loss_association_threshold = 2  # Number of consecutive frames without association to consider loss of measurement association
+removed_objects_p = []
+removed_objects_id = []
+removed_objects_f = []
+filters = []
+missed_filters = []
+missed_ids = []
+# for i in range(36, int(len(scan)/2)):
+current_id = 0
+for i in range(50, 65):
+    path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
+    print(path)
+    dsides = {'back': {
+        'bounding_boxes': [],
+        'positions': []
+    },
+        'front': {
+            'bounding_boxes': [],
+            'positions': []
+        },
+        'left': {
+            'bounding_boxes': [],
+            'positions': []
+        },
+        'right': {
+            'bounding_boxes': [],
+            'positions': []
+        }
     }
+    if os.path.exists(path):
+        img = cv2.imread(path)
+        back, left, right, front = laser_scan2xy(scan[i])
+        points = []
+        for d in dr_spaam[i]:
+            dr_value = tuple_of_floats = ast.literal_eval(d)
+            x = dr_value[0]
+            y = dr_value[1]
+            points.append((x, y))
 
-    right_info = {
-        'H': np.array([1.3646, -0.33852, -0.18656, 0.21548, 0.26631, 1.3902, -0.2393, 1.1006, -0.037212]),
-        'fu': 253.399373379354,
-        'fv': 247.434371718165,
-        'u0': 246.434570692999,
-        'v0': 239.287976204900
-    }
+        back_xy, left_xy, right_xy, front_xy = sides_points(points)
+        img = Image.fromarray(img)
+        sides = CubeProjection(img, '')
+        sides.cube_projection()
+        people = []
+        people_img = []
+        image = np.array(img)
+        detected_org, objects_poses = detect_people.detect_person(image, detection_model)
+        for face, side_img in sides.sides.items():
+            if face in FACE_NAMES:
+                cv_image = np.array(side_img)
+                detected, objects_pose = detect_people.detect_person(cv_image, detection_model)
+                print(face)
+                sorted_detected = sorted(detected, key=lambda x: x[0])
+                dsides[face]['bounding_boxes'] = sorted_detected
+                if face == 'back':
+                    pose = []
 
-    left_info = {
-        'H': np.array([0.15888, -0.036621, -0.021383, 0.025895, 0.030874, 0.16751, 0.035062, -0.16757, 0.002782]),
-        'fu': 248.567135164434,
-        'fv': 249.783014432268,
-        'u0': 242.942149245269,
-        'v0': 233.235264118894
-    }
-
-    front_info = {
-        'H': np.array([-0.27263, -1.1756, 0.64677, -0.048135, 1.1741, -0.24661, -0.039707, -0.023353, -0.27371]),
-        'fu': 239.720364104544,
-        'fv': 242.389765646256,
-        'u0': 237.571362200999,
-        'v0': 245.039671395514
-    }
-
-    # Set the parameters
-    num_states = 4  # Number of states (x, y, vx, vy)
-    num_measurements = 2  # Number of measurements (position)
-    process_noise_variance = 0.1  # Process noise variance
-    measurement_noise_variance = 0.01  # Measurement noise variance
-    dt = 0.01  # Time step
-    loss_association_threshold = 2  # Number of consecutive frames without association to consider loss of measurement association
-    removed_objects_p = []
-    removed_objects_i = []
-
-    # Define the process and measurement noise covariance matrices
-    Q = np.eye(num_states) * process_noise_variance
-    R = np.eye(num_measurements) * measurement_noise_variance
-
-    # Set initial state and covariance matrix
-    initial_covariance = np.eye(num_states) * 1.0  # Initial covariance matrix
-
-    # Create filters for each object
-    filters = []
-    tracks = {}
-    current_object_id = 0
-    galleries = {}
-    scan = []
-    with open('/home/sepid/workspace/Thesis/GuidingRobot/data1/scan.csv', 'r') as file:
-        # Create a CSV reader object
-        reader = csv.reader(file)
-        # Read each row of the CSV file
-        for row in reader:
-            image_id = int(row[0])  # Extract the image ID from the first column
-            ranges = [float(value) for value in row[1:]]  # Extract th
-            scan.append(ranges)
-
-    dr_spaam = []
-    with open('/home/sepid/workspace/Thesis/GuidingRobot/data1/drspaam_data2.csv', 'r') as file:
-        # Create a CSV reader object
-        reader = csv.reader(file)
-        # Read each row of the CSV file
-        for row in reader:
-            dr_spaam.append(row)
-    print(len(dr_spaam))
-
-    data = {}
-    # for i in range(36, int(len(scan)/2)):
-    for i in range(len(dr_spaam)):
-
-        path = '/home/sepid/workspace/Thesis/GuidingRobot/data1/image_' + str(i) + '.jpg'
-        print(path)
-        dsides = {}
-        if os.path.exists(path):
-            img = cv2.imread(path)
-            #             # print()
-            back, left, right, front = laser_scan2xy(scan[i])
-            points = []
-            for d in dr_spaam[i]:
-                dr_value = tuple_of_floats = ast.literal_eval(d)
-                x = dr_value[0]
-                y = dr_value[1]
-                points.append((x, y))
-
-            back_xy, left_xy, right_xy, front_xy = sides_points(points)
-            img = Image.fromarray(img)
-            sides = CubeProjection(img, '')
-            sides.cube_projection()
-            people = []
-            people_img = []
-            image = np.array(img)
-            detected_org = detect_people.detect_person(image, model)
-            print(detected_org)
-            for face, side_img in sides.sides.items():
-                if face in FACE_NAMES:
-                    cv_image = np.array(side_img)
-                    detected = detect_people.detect_person(cv_image, model)
-                    print(detected)
-                    if face == 'back':
-                        pose = []
-                        dsides['back']['bounding_boxes'] = detected
-                        XY = selected_point(back_xy, back, back_info, face, detected)
-                        for xy in XY:
-                            if xy[0] != 0 and xy[1] != 0:
-                                people.append((xy[0], xy[1]))
-                                pose.append((xy[0], xy[1]))
-                        dsides['back']['positions'] = pose
-
-                    elif face == 'front':
-                        pose = []
-                        dsides['front']['bounding_boxes'] = detected
-                        XY = selected_point(front_xy, front, front_info, face, detected)
-                        print('-------')
-                        print(detected)
-                        for xy in XY:
-                            if xy[0] != 0 and xy[1] != 0:
-                                people.append((xy[0], xy[1]))
-                                pose.append((xy[0], xy[1]))
-                        dsides['front']['positions'] = pose
-
-                    elif face == 'right':
-                        pose = []
-                        dsides['right']['bounding_boxes'] = detected
-                        XY = selected_point(right_xy, right, right_info, face, detected)
-                        for xy in XY:
-                            if xy[0] != 0 and xy[1] != 0:
-                                people.append((xy[0], xy[1]))
-                                pose.append((xy[0], xy[1]))
-                        dsides['right']['positions'] = pose
-
-                    elif face == 'left':
-                        pose = []
-                        dsides['left']['bounding_boxes'] = detected
-                        XY = selected_point(left_xy, left, left_info, face, detected)
-                        for xy in XY:
-                            if xy[0] != 0 and xy[1] != 0:
-                                people.append((xy[0], xy[1]))
-                                pose.append((xy[0], xy[1]))
-                        dsides['left']['positions'] = pose
-            bounding_boxs, measurements = check_one_label(detected_org, dsides)
-            frame_num = next(counter_gen)
-            pp_data = []
-            if frame_num == 0:
-                for object_id, person in enumerate(measurements):
-                    filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-                                                     fx=state_transition_fn, hx=measurement_fn,
-                                                     points=MerweScaledSigmaPoints(num_states, alpha=0.1, beta=2.,
-                                                                                   kappa=-1.0))
-
-                    # Set initial state and covariance matrix
-                    filter_i.x = [person[0], person[1], 0, 0]
-                    filter_i.P = initial_covariance
-                    filter_i.dim_x = num_states
-
-                    # Set process and measurement noise covariance matrices
-                    filter_i.Q = Q
-                    filter_i.R = R
-
-                    # Set object ID
-                    filter_i.object_id = object_id
-                    current_object_id = object_id
-                    # print(filter_i.x[:])
-                    # print(filter_i.object_id)
-
-                    # Initialize loss of measurement association counter
-                    filter_i.loss_association_counter = 0
-                    filter_i.miss_frame = []
-                    filter_i.frame_num = frame_num
-                    filters.append(filter_i)
-                    preprocced_image = load_and_preprocess_image(image, bounding_boxs[object_id])
-                    vect = extract_feature_single(model, preprocced_image)
-                    vect_features = vect.view((-1)).numpy()
-                    filters.embedded_feature = vect_features
-                    galleries[object_id]['features'] = vect_features
-                    galleries[object_id]['position'] = (person[0], person[1])
-            else:
-                # Predict the next state for each object
-                ids = []
-                attached = []
-                # print(len(filters))
-                for filter_i in filters:
-                    positions = np.array(measurements)
-                    # Calculate distances between predicted state and frame positions
-                    # distances = np.linalg.norm([filter_i.x[:2]]-positions)
-                    # Find the index of the nearest neighbor
-                    covariance_matrix = np.array([[1, 0], [0, 1]])
-                    nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix)
-
-                    if len(attached) == 0:
-                        nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                        attached.append(nearest_measurement)
-                        # print('a1', attached)
-                        # print(nearest_measurement)
-                        filter_i.predict(dt=dt)  # Pass the time step dt
-                        filter_i.update(nearest_measurement)
-                        # print(filter_i.object_id,nearest_measurement)
-                        estimated_state = filter_i.x  # Estimated state after each update
-                        estimated_covariance = filter_i.P
-                    else:
-                        nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                        natt = True
-                        for a in attached:
-                            if a[0] == nearest_measurement[0] and a[1] == nearest_measurement[1]:
-                                natt = False
-                        if natt:
-
-                            # print('ob', filter_i.object_id)
-                            # print(filter_i.object_id)
-                            # Update the state using the nearest neighbor measurement
-                            nearest_measurement = np.array(positions[nearest_index]).reshape(num_measurements)
-                            if filter_i.object_id == 1:
-                                print(positions)
-                                print(filter_i.x[:2])
-                                print(nearest_measurement)
-                            attached.append(nearest_measurement)
-                            # print('a1', attached)
-                            # print(nearest_measurement)
-                            filter_i.predict(dt=dt)  # Pass the time step dt
-                            filter_i.update(nearest_measurement)
-                            # print(filter_i.object_id,nearest_measurement)
-                            estimated_state = filter_i.x  # Estimated state after each update
-                            estimated_covariance = filter_i.P
-                            # print('ff',filter_i.x[:2])
-                            # print("Track position:", estimated_state[:2])
-                        else:
-                            # print('ii', filter_i.object_id)
-                            filter_i.loss_association_counter += 1
-                            filter_i.miss_frame.append('frame '+str(frame_num))
-                            # Handle loss of ID and new ID assignments
-                # print(frame, mes_seen)
-                if len(measurements) > len(attached):
-                    not_in_attached = [element for element in measurements if
-                                       all((element != arr).any() for arr in attached)]
-                    for ms in not_in_attached:
-                        if len(removed_objects_p) > 0:
-                            ms = np.array([[ms[0], ms[1]]])
-                            ms_2d = ms.reshape(1, -1)  # Reshape ms to a 2D array with one row
-                            positions = np.array(removed_objects_p)
-                            # Calculate distances between predicted state and frame positions
-                            covariance_matrix = np.array([[1, 0], [0, 1]])
-                            nearest_index = global_nearest_neighbor(positions, [filter_i.x[:2]],
-                                                                    covariance_matrix)
-                            if nearest_index > -1:
-                                filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-                                                                 fx=state_transition_fn, hx=measurement_fn,
-                                                                 points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-                                                                                               beta=2.,
-                                                                                               kappa=-1.0))
-                                filter_i.x = [removed_objects_p[nearest_index][0], removed_objects_p[nearest_index][1],
-                                              0, 0]
-                                filter_i.P = initial_covariance
-                                filter_i.dim_x = num_states
-
-                                # Set process and measurement noise covariance matrices
-                                filter_i.Q = Q
-                                filter_i.R = R
-
-                                # Set object ID
-                                filter_i.object_id = removed_objects_i[nearest_index]
-                                # print('aga',filter_i.object_id)
-                                # Initialize loss of measurement association counter
-                                filter_i.loss_association_counter = 0
-                                estimated_state = filter_i.x  # Estimated state after each update
-                                estimated_covariance = filter_i.P
-                                filter_i.miss_frame = []
-                                filter_i.frame_num = frame_num
-                                filters.append(filter_i)
-                                removed_objects_i.pop(nearest_index)
-                                removed_objects_p.pop(nearest_index)
-
-                        else:
-                            filter_i = UnscentedKalmanFilter(dim_x=num_states, dim_z=num_measurements, dt=dt,
-                                                             fx=state_transition_fn, hx=measurement_fn,
-                                                             points=MerweScaledSigmaPoints(num_states, alpha=0.1,
-                                                                                           beta=2.,
-                                                                                           kappa=-1.0))
-
-                            # Set initial state and covariance matrix
-                            # print(frame, current_object_id, measurements[ind])
-                            filter_i.x = [ms[0], ms[1], 0, 0]
-                            filter_i.P = initial_covariance
-                            filter_i.dim_x = num_states
-
-                            # Set process and measurement noise covariance matrices
-                            filter_i.Q = Q
-                            filter_i.R = R
-
-                            # Set object ID
-                            current_object_id += 1
-                            filter_i.object_id = current_object_id
-
-                            # Initialize loss of measurement association counter
-                            filter_i.loss_association_counter = 0
-                            estimated_state = filter_i.x  # Estimated state after each update
-                            estimated_covariance = filter_i.P
-                            filter_i.miss_frame = []
-                            filter_i.frame_num = frame_num
-                            filters.append(filter_i)
-                    # print("Track position:", estimated_state[:2])
-            remove_filters = []
-            for filter_i in filters:
-                # print('check', filter_i.object_id)
-                if filter_i.loss_association_counter >= loss_association_threshold:
-                    if abs(float(filter_i.miss_frame[loss_association_threshold - 1].split(' ')[1]) - float(
-                            filter_i.miss_frame[loss_association_threshold - 2].split(' ')[1])) == 1:
-                        # print('loss', filter_i.object_id)
-                        # print('loss', frame)
-                        # Handle loss of ID
-                        # print(len(filters))
-                        removed_objects_p.append(filter_i.x[:2])
-                        removed_objects_i.append(filter_i.object_id)
-                        remove_filters.append(filter_i)
-                    else:
-                        position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-                        pp = {'id' + str(filter_i.object_id): position}
-                        # print(pp)
-                        pp_data.append(pp)
-                else:
-                    position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
-                    pp = {'id' + str(filter_i.object_id): position}
-                    # print(pp)
-                    pp_data.append(pp)
-            yaml_data = {'frame ' + str(frame_num): pp_data}
-            output_file = 'tracks1.yaml'
-
-            # Open the file in write mode
-            with open(output_file, 'a') as file:
-                # Write the YAML data to the file
-                yaml.dump(yaml_data, file)
-            filters = handle_loss_of_id(filters, remove_filters)
-            # print(removed_objects_i)
-            print('-------------------------------------------------------------------------------------------')
-
-
+                    XY = selected_point(back_xy, back, back_info, face, sorted_detected, cv_image)
+                    for xy in XY:
+                        if xy[0] != 0 and xy[1] != 0:
+                            people.append((xy[0], xy[1]))
+                            pose.append((xy[0], xy[1]))
+                    dsides[face]['positions'] = pose
+                    print('-------------------')
+                elif face == 'front':
+                    pose = []
+                    XY = selected_point(front_xy, front, front_info, face, sorted_detected, cv_image)
+                    for xy in XY:
+                        if xy[0] != 0 and xy[1] != 0:
+                            people.append((xy[0], xy[1]))
+                            pose.append((xy[0], xy[1]))
+                    dsides['front']['positions'] = pose
+                    print('-------------------')
+                elif face == 'right':
+                    pose = []
+                    XY = selected_point(right_xy, right, right_info, face, sorted_detected, cv_image)
+                    for xy in XY:
+                        if xy[0] != 0 and xy[1] != 0:
+                            people.append((xy[0], xy[1]))
+                            pose.append((xy[0], xy[1]))
+                    dsides['right']['positions'] = pose
+                    print('-------------------')
+                elif face == 'left':
+                    pose = []
+                    XY = selected_point(left_xy, left, left_info, face, sorted_detected, cv_image)
+                    for xy in XY:
+                        if xy[0] != 0 and xy[1] != 0:
+                            people.append((xy[0], xy[1]))
+                            pose.append((xy[0], xy[1]))
+                    dsides['left']['positions'] = pose
+                    print('-------------------')
+        measurements, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, feature_model)
+        frame_num = next(counter_gen)
+        filters, missed_filters, current_id = tracking(
+            measurements, positions, galleries, filters, frame_num, missed_filters, current_id
+        )
