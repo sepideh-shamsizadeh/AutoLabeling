@@ -2,13 +2,23 @@ import os
 import random
 import torch
 import torchvision.transforms.functional as F
-from PIL import Image
+from PIL import Image, ImageDraw
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
+import argparse
+
+# Create an argument parser
+parser = argparse.ArgumentParser(description="Train a one-shot detector")
+
+# Add a command-line argument
+parser.add_argument('--folder', type=str, help='Path to the model .pth file', default="calibration_data")
+
+# Parse the command-line arguments
+args = parser.parse_args()
 
 # Define paths
-root = "./calibration_data"
+root = args.folder
 backgrounds_folder = os.path.join(root, 'backgrounds/')
 target_image_path = os.path.join(root,'target_image.png')  # The image with transparency
 output_folder = 'synthetic_data/'
@@ -23,42 +33,82 @@ backgrounds = [os.path.join(backgrounds_folder, bg) for bg in os.listdir(backgro
 
 # Define synthetic data generation function
 class SyntheticDataset(Dataset):
-    def __init__(self, target_image, backgrounds, num_samples):
+    def __init__(self, target_image, backgrounds, num_samples, augmentation_probability=0.5, use_advanced_aug = True):
         self.target_image = target_image
         self.backgrounds = backgrounds
         self.num_samples = num_samples
+        self.adv_aug = use_advanced_aug
+        self.augmentation_probability = augmentation_probability
+
+        random.seed(11)
 
     def __len__(self):
         return self.num_samples
+        
+    def apply_perspective_distortion(self, image):
+        width, height = image.size
+        # Define random perspective distortion points
+        left = random.uniform(0.1, 0.3) * width
+        right = random.uniform(0.7, 0.9) * width
+        top = random.uniform(0.1, 0.3) * height
+        bottom = random.uniform(0.7, 0.9) * height
+
+        # Define the perspective distortion matrix
+        matrix = [
+            left, top,
+            right, top,
+            width, height,
+            0, bottom
+        ]
+
+        # Apply perspective transformation
+        perspective = image.transform(image.size, Image.Resampling.BICUBIC, matrix)
+        return perspective
 
     def __getitem__(self, idx):
-        background_path = random.choice(self.backgrounds)
-        background = Image.open(background_path)
+            background_path = random.choice(self.backgrounds)
+            background = Image.open(background_path)
 
-        # Randomly scale the target image
-        scale_x = random.uniform(0.5, 1.5)
-        scale_y = random.uniform(0.5, 1.5)
+            # Randomly scale the target image
+            if random.random() < self.augmentation_probability:
+                scale_x = random.uniform(0.5, 1.5)
+                scale_y = random.uniform(0.5, 1.5)
+            else:
+                scale_x = scale_y = 1.0
 
-        target_resized = self.target_image.resize(
-            (int(self.target_image.width * scale_x), int(self.target_image.height * scale_y)))
+            target_resized = self.target_image.resize(
+                (int(self.target_image.width * scale_x), int(self.target_image.height * scale_y)))
 
-        # Paste the target image onto the background
-        paste_x = random.randint(0, background.width - target_resized.width)
-        paste_y = random.randint(0, background.height - target_resized.height)
-        background.paste(target_resized, (paste_x, paste_y), target_resized)
+            # Randomly rotate the target image
+            if random.random() < self.augmentation_probability and self.adv_aug:
+                angle = random.randint(-90, 90)
+                target_rotated = target_resized.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+            else:
+                target_rotated = target_resized
 
-        # Define bounding box coordinates (you need to adjust this based on your target image)
-        bbox = [paste_x, paste_y, paste_x + target_resized.width, paste_y + target_resized.height]
+            # Apply random perspective distortion to the rotated target image
+            if random.random() < self.augmentation_probability and self.adv_aug:
+                target_distorted = self.apply_perspective_distortion(target_rotated)
+            else:
+                target_distorted = target_rotated
 
-        # Transform the data into PyTorch tensors
-        image_tensor = F.to_tensor(background).cuda()
-        bbox_tensor = torch.tensor(bbox, dtype=torch.float32).unsqueeze(0).cuda()
+            # Paste the distorted target image onto the background
+            paste_x = random.randint(0, background.width - target_distorted.width)
+            paste_y = random.randint(0, background.height - target_distorted.height)
+            background.paste(target_distorted, (paste_x, paste_y), target_distorted)
 
-        return {'image': image_tensor, 'bbox': {'boxes':bbox_tensor, 'labels':torch.tensor([1]).cuda()}}
+            # Define bounding box coordinates (you need to adjust this based on your target image)
+            bbox = [paste_x, paste_y, paste_x + target_distorted.width, paste_y + target_distorted.height]
+
+            # Transform the data into PyTorch tensors
+            image_tensor = F.to_tensor(background).cuda()
+            bbox_tensor = torch.tensor(bbox, dtype=torch.float32).unsqueeze(0).cuda()
+
+            return {'image': image_tensor, 'bbox': {'boxes': bbox_tensor, 'labels': torch.tensor([1]).cuda()}}
 
 
 # Create the synthetic dataset and DataLoader
-num_synthetic_samples = 100
+num_synthetic_samples = 500
 synthetic_dataset = SyntheticDataset(target_image, backgrounds, num_synthetic_samples)
 train_loader = DataLoader(synthetic_dataset, batch_size=4, shuffle=True)
 
@@ -73,7 +123,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=0.005, momentum=0.9, weight_d
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
 # Training loop
-num_epochs = 1
+num_epochs = 5
 for epoch in range(num_epochs):
     print(f"Epoch {epoch + 1}/{num_epochs}")
     print("-" * 10)
@@ -99,7 +149,7 @@ for epoch in range(num_epochs):
 
         total_loss += losses.item()
 
-        if batch_idx % 10 == 0:
+        if batch_idx % 25 == 0:
             print(f"Batch [{batch_idx}/{len(train_loader)}] Loss: {losses.item():.4f}")
 
     avg_loss = total_loss / len(train_loader)

@@ -23,4 +23,15 @@ images/
 logs/
 src/venv/
 src/auto_calibration_tools/calibration_data/one_shot_object_detector.pth
-
+src/ricoh_theta_z1
+src/auto_calibration_tools/scripts/calibration_data
+RUR/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/back
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/bottom
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/front
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/images
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/left
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/one_shot_object_detector.pth
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/__pycache__
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/right
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/top
