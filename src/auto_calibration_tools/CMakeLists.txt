@@ -163,6 +163,8 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/camera.py
   scripts/sync_image_scan.py
+  scripts/calibration_data_intrinsics/splitImage.py
+  scripts/calibration_data_intrinsics/cube_projection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

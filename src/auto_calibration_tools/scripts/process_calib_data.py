@@ -9,12 +9,37 @@ from scipy.optimize import minimize
 import cv2
 
 from read_calib_data import RangeImagePublisher
-from image_similarity_measures.quality_metrics import *
 from sklearn.cluster import DBSCAN, MeanShift
 
 import torch
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 import torchvision.transforms.functional as F
+import pickle
+from scipy.spatial import ConvexHull
+
+import torch.nn as nn
+from trainLaserDetector import NeuralNetwork
+
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+
+def map_bounding_box_to_side(bounding_box):
+    u1, y1, u2, v2 = bounding_box
+
+    if (u1 >= 0 and u2 < 240) or (u1 >= 1720 and u2 < 1960):
+        if 240 <= v2 < 720:
+            return (0, "back")
+    elif u1 >= 240 and u2 < 720:
+        if 240 <= v2 < 720:
+            return (1, "left")
+    elif u1 >= 720 and u2 < 1200:
+        if 240 <= v2 <720:
+            return (2, "front")
+    elif u1 >= 1200 and u2 < 1720:
+        if 240 <= v2 < 720:
+            return (3, "right")
+    return None  # Bounding box doesn't fit any side
+
 
 def visualize_matching_result(point_cloud, template, optimal_translation, optimal_rotation):
     # Rotate the template by the optimal rotation
@@ -75,6 +100,174 @@ def template_matching(point_cloud, template, initial_params = np.array([0, 0, 0]
 
     return optimal_translation, optimal_rotation, result
 
+def process2(ranges, image, laser_spec):
+
+    ranges = np.array(ranges)
+    R = 0.285
+    dist_BC = R * np.sqrt(2)
+    eps_point = 15
+    num_point = 5
+    aperture = 25 #degrees
+
+    angle_max = laser_spec['angle_max']
+    angle_min = laser_spec['angle_min']
+    angle_increment = laser_spec['angle_increment']
+    range_min = laser_spec['range_min']
+    range_max = laser_spec['range_max']
+
+    mask = ranges <= range_max
+
+    # Calculate the angles for each range measurement
+    angles = np.arange(angle_min, angle_max, angle_increment)
+
+    ranges = ranges[mask]
+    angles = angles[mask]
+
+    # Convert polar coordinates to Cartesian coordinates
+    x = np.multiply(ranges, np.cos(angles))
+    y = np.multiply(ranges, np.sin(angles))
+
+    points = np.stack([x, y], axis=1)
+
+    if verbose:
+        plt.scatter(points[:,0], points[:,1], c='red', marker='x')
+
+    model_filename = 'laserpoint_detector.pth'
+    # Define the model structure
+    input_size = 6  # Adjust according to your model architecture
+    model = NeuralNetwork(input_size)
+    model.load_state_dict(torch.load(model_filename))
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)  # Move the model to the specified device
+
+    #points = points[:100]
+
+    X = []
+    for i in tqdm(range(len(points))):
+
+        A = points[i]
+
+        eps = abs(np.sin(angle_increment) * np.linalg.norm(A))
+        eps = 2*eps
+
+        for j in range(len(points)):
+            B = points[j]
+            distance_AB = np.linalg.norm(B - A)  # Euclidean distance
+
+            distance_A = np.linalg.norm(A)
+            distance_B = np.linalg.norm(B)
+
+            if abs(distance_AB - R) <= eps and distance_B < distance_A:
+
+                count_points_on_AB = 0  # Counter for points on line AB
+                count_points_on_AC = 0  # Counter for points on line AC
+
+                for k in range(len(points)):
+
+                    C = points[k]
+
+                    distance_AC = np.linalg.norm(C - A)  # Euclidean distance
+                    distance_BC = np.linalg.norm(B - C)
+                    distance_C = np.linalg.norm(C)
+
+                    if distance_C < distance_A and abs(distance_AC - R) <= eps and abs(
+                            distance_AC - distance_AB) <= eps and (distance_BC - dist_BC) <= eps:
+
+                        new_data = np.array([A, B, C]).reshape(-1, 6)
+
+                        X.append(new_data)
+
+    X = np.array(X).squeeze()
+    print("Candidate points: ", X.shape)
+
+    y_pred = model(torch.tensor(X, device=device, dtype=torch.float32))
+
+
+    y_probs, pred = torch.max(y_pred, dim=1)
+    pred = pred.detach().cpu().numpy()
+    y_probs = y_probs.detach().cpu().numpy()
+    labels = pred.astype(bool)
+
+    filtered_points = X[labels].reshape(pred.sum(), 3, 2)
+    probs_points = y_probs[labels]
+
+    #best_fit = np.argmax(probs_points)
+    #seleced_point = filtered_points[best_fit]
+
+    # A = seleced_point[0,:]
+    # B = seleced_point[1,:]
+    # C = seleced_point[2,:]
+
+    seleced_points = []
+
+    for i,vertex in enumerate(filtered_points):
+
+        A = vertex[0,:]
+        B = vertex[1,:]
+        C = vertex[2,:]
+
+        count_points_on_AB = 0
+        count_points_on_AC = 0
+
+        for point in points:
+
+            vector_AB = B - A
+            vector_AC = C - A
+            vector_AP = point - A
+
+            distance_AB = np.linalg.norm(vector_AB)
+            distance_AC = np.linalg.norm(vector_AC)
+            distance_AP = np.linalg.norm(vector_AP)
+
+            if distance_AP > distance_AB or distance_AP > distance_AC:
+                continue
+
+            # Calculate the cosine of the angle between vectors
+            cos_angle_AB = np.dot(vector_AP, vector_AB) / (
+                    np.linalg.norm(vector_AP) * np.linalg.norm(vector_AB))
+            cos_angle_AC = np.dot(vector_AP, vector_AC) / (
+                    np.linalg.norm(vector_AP) * np.linalg.norm(vector_AC))
+
+            # Calculate the angular distances (angles in radians)
+            distance_pAB = np.arccos(np.clip(cos_angle_AB, -1.0, 1.0))
+            distance_pAC = np.arccos(np.clip(cos_angle_AC, -1.0, 1.0))
+
+            if np.degrees(distance_pAB) <= eps_point:
+                count_points_on_AB += 1
+            if np.degrees(distance_pAC) <= eps_point:
+                count_points_on_AC += 1
+
+        # if i == 19:
+        #     plt.scatter(points[:, 0], points[:, 1], c='red', marker='x')
+        #     plt.scatter(A[0], A[1], c='cyan', marker='o', s=100, linewidths=3, label="A", alpha=0.25)
+        #     plt.scatter(B[0], B[1], c='orange', marker='o', s=100, linewidths=3, label="B", alpha=0.25)
+        #     plt.scatter(C[0], C[1], c='green', marker='o', s=100, linewidths=3, label="C", alpha=0.25)
+        #     print("count_points_on_AB: {} - count_points_on_AC: {}".format(count_points_on_AB, count_points_on_AC))
+        #     plt.show()
+
+        if count_points_on_AB > num_point and count_points_on_AC > num_point:
+            seleced_points.append(vertex)
+
+
+    seleced_points = np.array(seleced_points)
+    print("Selected points: ", seleced_points.shape)
+
+    A = seleced_points[:,0,:]
+    B = seleced_points[:,1,:]
+    C = seleced_points[:,2,:]
+
+    if verbose:
+        # plt.scatter(A[0], A[1], c='cyan', marker='o', s=100, linewidths=3, label="A", alpha=0.25)
+        # plt.scatter(B[0], B[1], c='orange', marker='o', s=100, linewidths=3, label="B", alpha=0.25)
+        # plt.scatter(C[0], C[1], c='green', marker='o', s=100, linewidths=3, label="C", alpha=0.25)
+
+        plt.scatter(A[:,0], A[:,1], c='cyan', marker='o', s=100, linewidths=3, label="A", alpha=0.25)
+        plt.scatter(B[:,0], B[:,1], c='orange', marker='o', s=100, linewidths=3, label="B", alpha=0.25)
+        plt.scatter(C[:,0], C[:,1], c='green', marker='o', s=100, linewidths=3, label="C", alpha=0.25)
+
+        plt.show()
+
 def process(ranges, image, laser_spec):
 
     template = [
@@ -127,9 +320,9 @@ def process(ranges, image, laser_spec):
     selected_points = []
 
     # Plot the laser scan data
-
-    plt.scatter(points[:,0], points[:,1], c='orange', marker='x')
-    plt.scatter(template[:,0], template[:,1], c='purple', marker='1')
+    if verbose:
+        plt.scatter(points[:,0], points[:,1], c='orange', marker='x')
+        plt.scatter(template[:,0], template[:,1], c='purple', marker='1')
 
     # Iterate through all combinations of 3 points
     for i in tqdm(range(len(points))):
@@ -202,9 +395,10 @@ def process(ranges, image, laser_spec):
 
                             if count_points_on_AB > num_point and count_points_on_AC > num_point:
 
-                                plt.scatter(A[0], A[1], c='cyan', marker='+', s=400, linewidths=3)
-                                plt.scatter(B[0], B[1], c='red', marker='+', s=400,  linewidths=3)
-                                plt.scatter(C[0], C[1], c='blue', marker='+', s=400,  linewidths=3)
+                                if verbose:
+                                    plt.scatter(A[0], A[1], c='cyan', marker='+', s=400, linewidths=3)
+                                    plt.scatter(B[0], B[1], c='red', marker='+', s=400,  linewidths=3)
+                                    plt.scatter(C[0], C[1], c='blue', marker='+', s=400,  linewidths=3)
 
                                 # print("+++++++ Found points A {}, B {}, C {} ++++++++++++++++++".format(A, B, C))
                                 #
@@ -225,12 +419,12 @@ def process(ranges, image, laser_spec):
     if cont == 0:
         return None
 
-    plt.xlabel('X Distance (m)')
-    plt.ylabel('Y Distance (m)')
-    plt.title('Laser Scan Data')
-    plt.axis('equal')  # Equal aspect ratio
-    plt.grid(True)
-    #plt.show()
+    if verbose:
+        plt.xlabel('X Distance (m)')
+        plt.ylabel('Y Distance (m)')
+        plt.title('Laser Scan Data')
+        plt.axis('equal')  # Equal aspect ratio
+        plt.grid(True)
 
     final_point = []
     min_dist = 10000
@@ -262,20 +456,22 @@ def process(ranges, image, laser_spec):
     print(final_point)
     print("MIN DIST: ", min_dist)
 
-    plt.scatter(A[0], A[1], c='cyan', marker='o', s=400, linewidths=3, label="Final prediction A", alpha=0.5)
-    plt.scatter(B[0], B[1], c='red', marker='o', s=400, linewidths=3, label="Final prediction B", alpha=0.5)
-    plt.scatter(C[0], C[1], c='blue', marker='o', s=400, linewidths=3, label="Final prediction C", alpha=0.5)
+    if verbose:
+        plt.scatter(A[0], A[1], c='cyan', marker='o', s=400, linewidths=3, label="Final prediction A", alpha=0.5)
+        plt.scatter(B[0], B[1], c='red', marker='o', s=400, linewidths=3, label="Final prediction B", alpha=0.5)
+        plt.scatter(C[0], C[1], c='blue', marker='o', s=400, linewidths=3, label="Final prediction C", alpha=0.5)
 
-    manager = plt.get_current_fig_manager()
-    manager.full_screen_toggle()
-    plt.legend()
+        manager = plt.get_current_fig_manager()
+        manager.full_screen_toggle()
+        plt.legend()
 
-    # Convert Cartesian to polar coordinates
-    cartesian_points = np.array(final_point)
-    polar_coordinates = cartesian_to_polar(cartesian_points)
-    plt.title("DETECTION OF THE CORNERS IN THE LASER")
+        # Convert Cartesian to polar coordinates
+        cartesian_points = np.array(final_point)
+        polar_coordinates = cartesian_to_polar(cartesian_points)
+        plt.title("DETECTION OF THE CORNERS IN THE LASER")
 
-    plt.show()
+
+        plt.show()
 
     if min_dist < 0.180:
         return final_point
@@ -319,39 +515,59 @@ def are_angles_close(angle1, angle2, threshold):
     return angle_difference < threshold or angle_difference > np.pi - threshold
 
 
-def process_image(cartesian_points, image , detector=None):
+def process_image(cartesian_points, image , detector):
 
     ############################################################################################
 
+    # Access the backbone model (ResNet-50 in this case)
+    backbone_model = detector.backbone
+    # Check the device of the backbone model
+    device = next(backbone_model.parameters()).device
+
     #Detect board with the trained model
-    test_tensor = F.to_tensor(image).unsqueeze(0).cuda()
+    test_tensor = F.to_tensor(image).unsqueeze(0).to(device)
     predictions = detector(test_tensor)[0]
 
     # Find the index of the bounding box with the highest score
+    if len(predictions['scores']) == 0:
+        print("**** Unable to detect the board!")
+        return None
+
     max_score_idx = torch.argmax(predictions['scores'])
 
     # Get the bounding box and score with the highest score
     max_score_box = predictions['boxes'][max_score_idx].detach().cpu().numpy()
     max_score = predictions['scores'][max_score_idx]
 
+    side = map_bounding_box_to_side(max_score_box)
+
     # Enlarge the bounding box by a factor of 1.2 (adjust as needed)
     enlargement_factor = 1.2
-    box = [
-        int(np.round(
-            max_score_box[0] - (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2)),
-        int(np.round(
-            max_score_box[1] - (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2)),
-        int(np.round(
-            max_score_box[2] + (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2)),
-        int(np.round(
-            max_score_box[3] + (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2)),
-    ]
 
+    # Calculate the new coordinates after applying the enlargement factor
+    new_x1 = int(np.round(max_score_box[0] - (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2))
+    new_y1 = int(np.round(max_score_box[1] - (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2))
+    new_x2 = int(np.round(max_score_box[2] + (max_score_box[2] - max_score_box[0]) * (enlargement_factor - 1) / 2))
+    new_y2 = int(np.round(max_score_box[3] + (max_score_box[3] - max_score_box[1]) * (enlargement_factor - 1) / 2))
 
+    # Ensure the new coordinates are within [0, img_size]
+    h, w, c = image.shape  # Replace with your actual image size
+    new_x1 = max(0, min(new_x1, w - 1))
+    new_y1 = max(0, min(new_y1, h - 1))
+    new_x2 = max(0, min(new_x2, w - 1))
+    new_y2 = max(0, min(new_y2, h - 1))
+
+    # The adjusted coordinates are now in [0, img_size]
+    box = [new_x1, new_y1, new_x2, new_y2]
+
+    print("box: ", box)
     #############################################################################################
 
     # Crop a slice of the image using the horizontal pixel coordinates
     cropped_image = image[box[1]:box[3], box[0]:box[2]]
+
+#    plt.imshow(cropped_image)
+#    plt.show()
 
     # Resize the cropped image to have a width of 250 pixels
     new_width = 250
@@ -390,20 +606,21 @@ def process_image(cartesian_points, image , detector=None):
     line_image_rgb = cv2.cvtColor(line_image, cv2.COLOR_BGR2RGB)
 
     # Display the edge image and the cropped image with detected lines
-    plt.figure(figsize=(18, 9))
+    if verbose:
+        plt.figure(figsize=(18, 9))
 
-    plt.subplot(1, 2, 1)
-    plt.imshow(edges, cmap='gray')
-    plt.title('Edge Image')
-    plt.axis('off')
+        plt.subplot(1, 2, 1)
+        plt.imshow(edges, cmap='gray')
+        plt.title('Edge Image')
+        plt.axis('off')
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(line_image_rgb)
-    plt.title('Cropped Image with Detected Lines')
-    plt.axis('off')
+        plt.subplot(1, 2, 2)
+        plt.imshow(line_image_rgb)
+        plt.title('Cropped Image with Detected Lines')
+        plt.axis('off')
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
 
     ###############################################
 
@@ -446,11 +663,12 @@ def process_image(cartesian_points, image , detector=None):
     ################################# VISUALIZATION
 
     # Visualize the lines on the cropped region
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.imshow(line_image)
-    plt.title('Cropped Image')
-    plt.axis('off')
+    if verbose:
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.imshow(line_image)
+        plt.title('Cropped Image')
+        plt.axis('off')
 
     # Plot the detected lines
     line_image = np.copy(cropped_image)
@@ -466,14 +684,16 @@ def process_image(cartesian_points, image , detector=None):
         y2 = int(y0 - 1000 * (a))
         cv2.line(line_image, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Draw lines in red
 
-        plt.subplot(1, 2, 2)
-        plt.imshow(line_image)
-        plt.title('Edges')
-        plt.axis('off')
+        if verbose:
+            plt.subplot(1, 2, 2)
+            plt.imshow(line_image)
+            plt.title('Edges')
+            plt.axis('off')
 
-    plt.title('Detected Lines')
-    plt.axis('off')
-    plt.show()
+    if verbose:
+        plt.title('Detected Lines')
+        plt.axis('off')
+        plt.show()
 
 ##################################
 
@@ -628,29 +848,31 @@ def process_image(cartesian_points, image , detector=None):
 
 
     # Display the result
-    plt.title("CORNERS IN THE IMAGE")
-    plt.subplot(1, 2, 1)
-    plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
+    if verbose:
+        plt.title("CORNERS IN THE IMAGE")
+        plt.subplot(1, 2, 1)
+        plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(image)
-    #print(cluster_centers)
-    plt.scatter( filtered_intersection_points[:,0] ,  filtered_intersection_points[:,1], marker="x", s=100, color='orange', linewidths=2 )
-    if len(points_category_A)>0:
-        plt.scatter( points_category_A[:,0] ,  points_category_A[:,1], marker="x", s=100, color='red', linewidths=2, label="A" )
-    if len(points_category_B) > 0:
-        plt.scatter( points_category_B[:,0] ,  points_category_B[:,1], marker="x", s=100, color='blue', linewidths=2, label="B")
-    if len(points_category_C)>0:
-        plt.scatter( points_category_C[:,0] ,  points_category_C[:,1], marker="x", s=100, color='cyan', linewidths=2, label='C' )
-    plt.legend()
-    plt.show()
+        plt.subplot(1, 2, 2)
+        plt.imshow(image)
+
+        plt.scatter( filtered_intersection_points[:,0] ,  filtered_intersection_points[:,1], marker="x", s=100, color='orange', linewidths=2 )
+        if len(points_category_A)>0:
+            plt.scatter( points_category_A[:,0] ,  points_category_A[:,1], marker="x", s=100, color='red', linewidths=2, label="A" )
+        if len(points_category_B) > 0:
+            plt.scatter( points_category_B[:,0] ,  points_category_B[:,1], marker="x", s=100, color='blue', linewidths=2, label="B")
+        if len(points_category_C)>0:
+            plt.scatter( points_category_C[:,0] ,  points_category_C[:,1], marker="x", s=100, color='cyan', linewidths=2, label='C' )
+        plt.legend()
+        plt.show()
 
     if len(points_category_A) == 0 and len(points_category_B) == 0 and len(points_category_C) == 0:
         print("No points near the corners!")
         return None
 
     point_tuples = {
+                    'side':side,
                     'A': {'laser': cartesian_points[0], 'image': points_category_A },
                     'B': {'laser': cartesian_points[2], 'image': points_category_B },
                     'C': {'laser': cartesian_points[1], 'image': points_category_C },
@@ -660,17 +882,22 @@ def process_image(cartesian_points, image , detector=None):
 
 if __name__ == "__main__":
 
+    verbose = True
+
     csv_file_path = './calibration_data/output.csv'
     image_folder = './calibration_data/images'
     template_file = './calibration_data/board.jpg'
 
     range_image_publisher = RangeImagePublisher(csv_file_path, image_folder)
 
+    # Send the model to CUDA if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     #PREPARE THE DETECTOR
     # Load the fine-tuned model's state dictionary
     root = "./calibration_data"
     save_path = os.path.join(root, 'one_shot_object_detector.pth')
-    model_state_dict = torch.load(save_path)
+    model_state_dict = torch.load(save_path, map_location=device)
 
     # Create an instance of the model
     model = fasterrcnn_resnet50_fpn(pretrained=False)
@@ -678,22 +905,33 @@ if __name__ == "__main__":
     model.roi_heads.box_predictor.cls_score.out_features = num_classes
     model.roi_heads.box_predictor.bbox_pred.out_features = num_classes * 4
     model.load_state_dict(model_state_dict)
-    # Send the model to CUDA if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     model.to(device)
     model.eval()
 
     cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
 
-    while cmd.lower() != 'q':
-        scan, image = range_image_publisher.publish_next_scan_image()
+    good_points = {
+        'back':[],
+        "left":[],
+        "right":[],
+        "front":[]
+    }
 
-        if cmd.lower() == 's':
-            cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
-            continue
+    while cmd.lower() != 'q':
+        (scan, image), progress = range_image_publisher.publish_next_scan_image()
+
+        if scan is None:
+             break
+
+        print("+++++++++++++++++ Processing image {}/{}".format(progress[0], progress[1]))
+
+#        if cmd.lower() == 's':
+#            cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+#            continue
 
         laser_spec = range_image_publisher.get_laser_specs()
-        laser_point = process(scan, image, laser_spec)
+        laser_point = process2(scan, image, laser_spec)
 
         # #for testing
         # laser_point = [
@@ -705,4 +943,31 @@ if __name__ == "__main__":
             point_tuples = process_image(np.array(laser_point), image, detector=model)
             print(point_tuples)
 
-        cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+            if point_tuples is not None:
+
+                side=point_tuples['side']
+
+                if side is not None:
+
+                    if point_tuples['A']['image'].shape[0] >=2 :
+                        good_points[side[1]].append( [point_tuples['A']['laser'], point_tuples['A']['image']] )
+
+                    if point_tuples['B']['image'].shape[0] >=2 :
+                        good_points[side[1]].append( [point_tuples['B']['laser'], point_tuples['B']['image']] )
+
+                    if point_tuples['C']['image'].shape[0] >=2 :
+                        good_points[side[1]].append( [point_tuples['C']['laser'], point_tuples['C']['image']] )
+
+        #cmd = input("Press Enter to publish the next scan message...    [press Q to stop]")
+
+
+# Specify the file path where you want to save the dictionary
+file_path = "cameraLaser_points.pkl"
+
+# save dictionary to person_data.pkl file
+with open(file_path, 'wb') as fp:
+    pickle.dump(good_points, fp)
+    print('dictionary saved successfully to file')
+
+
+print(f"Point for laser and camera calibration saved at {file_path}")
