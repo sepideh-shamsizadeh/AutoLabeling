@@ -1,4 +1,5 @@
 from PIL import Image
+from numpy import clip
 from src.util.visual_feature_utils import *
 from src.util.laser2image_utils import *
 from math import pi, atan2, hypot, floor
@@ -86,7 +87,8 @@ def assign_pose2person(people_detected, j, person, image, pos, model1, galleries
     return galleries, sorted_positions, people_detected
 
 
-def from_panoramic2cube(face, bnd):
+def from_cube2panoramic(face, bnd):
+    inSize = (1920, 960)
     a = 2.0 * float(bnd[0]) / 480
     b = 2.0 * float(bnd[1]) / 480
     if face == 'back':  # back
@@ -105,7 +107,11 @@ def from_panoramic2cube(face, bnd):
     # source img coords
     uf = 0.5 * 1920 * (theta + pi) / pi
     vf = 0.5 * 1920 * (pi / 2 - phi) / pi
-    return uf, vf
+    # Use bilinear interpolation between the four surrounding pixels
+    ui = floor(uf)  # coord of pixel to bottom left
+    vi = floor(vf)
+    A = int(ui % inSize[0]), int(clip(vi, 0, inSize[1] - 1))
+    return A
 
 
 def assign_pose2panoramic(image, org_detected, sides_detected, model1):
@@ -154,7 +160,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
             if 240 <= person[2] < 720:
                 bnd = sides_detected['left']['bounding_boxes'][0]
                 pos = sides_detected['left']['positions'][0]
-                if bnd[0] <= from_panoramic2cube('left', person)[0] + 7 <= bnd[2]:
+                if abs(from_cube2panoramic('left', bnd)[0]-person[0]) <= 2:
                     galleries, sorted_positions, people_detected = assign_pose2person(
                         people_detected, j, person, image, pos, model1, galleries, sorted_positions
                     )
@@ -162,7 +168,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     sides_detected['left']['bounding_boxes'].pop(0)
                     j += 1
                 else:
-                    j += 1
+                    j+=1
             elif 720 <= person[2] < 1200:
                 sides_detected, pos = handle_borders('left', 'front', sides_detected)
                 galleries, sorted_positions, people_detected = assign_pose2person(
@@ -173,7 +179,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
             if 720 <= person[2] < 1200:
                 bnd = sides_detected['front']['bounding_boxes'][0]
                 pos = sides_detected['front']['positions'][0]
-                if bnd[0] <= from_panoramic2cube('front', person)[0] + 7 <= bnd[2]:
+                if abs(from_cube2panoramic('front', bnd)[0]-person[0]) <= 2:
                     galleries, sorted_positions, people_detected = assign_pose2person(
                         people_detected, j, person, image, pos, model1, galleries, sorted_positions
                     )
@@ -192,7 +198,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
             if 1200 <= person[2] < 1680:
                 bnd = sides_detected['right']['bounding_boxes'][0]
                 pos = sides_detected['right']['positions'][0]
-                if bnd[0] <= from_panoramic2cube('right', person)[0] + 7 <= bnd[2]:
+                if abs(from_cube2panoramic('right', bnd)[0]-person[0]) <= 2:
                     galleries, sorted_positions, people_detected = assign_pose2person(
                         people_detected, j, person, image, pos, model1, galleries, sorted_positions
                     )
@@ -210,7 +216,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
         elif 1680 <= person[0] <= 1920:
             bnd = sides_detected['back']['bounding_boxes'][0]
             pos = sides_detected['back']['positions'][0]
-            if bnd[0] <= from_panoramic2cube('back', person)[0] + 7 <= bnd[2]:
+            if abs(from_cube2panoramic('back', bnd)[0]-person[0]) <= 2:
                 galleries, sorted_positions, people_detected = assign_pose2person(
                     people_detected, j, person, image, pos, model1, galleries, sorted_positions
                 )

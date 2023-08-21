@@ -58,7 +58,6 @@ class CubeProjection:
 
     def convertFace(self, imgin, imgout, faceIdx):
         inSize = imgin.size
-        print(inSize)
         outsize = imgout.size
         inpix = imgin.load()
         outpix = imgout.load()
@@ -96,3 +95,4 @@ class CubeProjection:
                     A[2] * (1 - mu) * (1 - nu) + B[2] * (mu) * (1 - nu) + C[2] * (1 - mu) * nu + D[2] * mu * nu)
 
                 outpix[xout, yout] = (int(round(r)), int(round(g)), int(round(b)))
+                print(xout, yout)
