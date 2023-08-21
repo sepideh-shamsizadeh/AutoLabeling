@@ -129,9 +129,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 for i, back in enumerate(bnd):
                     if 0 <= back[0] < 240:
                         if 240 <= back[2] < 480:
-                            pos = sides_detected['back']['positions'].pop(i)
-                            sides_detected['back']['bounding_boxes'].pop(i)
-                            flag_concat = True
+                            if 1680 <= sorted_people[-1][0] <= 1920:
+                                pos = sides_detected['back']['positions'].pop(i)
+                                sides_detected['back']['bounding_boxes'].pop(i)
+                                flag_concat = True
                 if flag_concat:
                     bnnd = sorted_people.pop()
                     img = concatenate_person(bnnd, person, image)
@@ -141,7 +142,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     j += 1
                 else:
                     people_detected = assign_pose2person(
-                        people_detected, j, person, img, pos, model1, flag_concat
+                        people_detected, j, person, image, pos, model1, flag_concat
                     )
                     sides_detected['back']['positions'].pop(0)
                     sides_detected['back']['bounding_boxes'].pop(0)
