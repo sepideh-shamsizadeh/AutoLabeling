@@ -2,7 +2,6 @@ import os
 import ast
 import csv
 import timm
-from PIL import Image
 from LATransformer.model import LATransformerTest
 from util.multi_people_tracking import tracking
 from util.cube_projection import CubeProjection
@@ -71,7 +70,7 @@ missed_filters = []
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(0, 50):
+for i in range(13, 100):
     path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
@@ -120,41 +119,49 @@ for i in range(0, 50):
                     pose = []
 
                     XY = selected_point(back_xy, back, back_info, face, sorted_detected, cv_image)
-                    for xy in XY:
-                        if xy[0] != 0 and xy[1] != 0:
+                    for kk, xy in enumerate(XY):
+                        if xy[0] != 0 or xy[1] != 0:
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
+                        else:
+                            dsides[face]['bounding_boxes'].pop(kk)
                     dsides[face]['positions'] = pose
                     print('-------------------')
                 elif face == 'front':
                     pose = []
                     XY = selected_point(front_xy, front, front_info, face, sorted_detected, cv_image)
-                    for xy in XY:
-                        if xy[0] != 0 and xy[1] != 0:
+                    for kk, xy in enumerate(XY):
+                        if xy[0] != 0 or xy[1] != 0:
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
+                        else:
+                            dsides[face]['bounding_boxes'].pop(kk)
                     dsides['front']['positions'] = pose
                     print('-------------------')
                 elif face == 'right':
                     pose = []
                     XY = selected_point(right_xy, right, right_info, face, sorted_detected, cv_image)
-                    for xy in XY:
-                        if xy[0] != 0 and xy[1] != 0:
+                    for kk, xy in enumerate(XY):
+                        if xy[0] != 0 or xy[1] != 0:
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
+                        else:
+                            dsides[face]['bounding_boxes'].pop(kk)
                     dsides['right']['positions'] = pose
                     print('-------------------')
                 elif face == 'left':
                     pose = []
                     XY = selected_point(left_xy, left, left_info, face, sorted_detected, cv_image)
-                    for xy in XY:
-                        if xy[0] != 0 and xy[1] != 0:
+                    for kk, xy in enumerate(XY):
+                        if xy[0] != 0 or xy[1] != 0:
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
+                        else:
+                            dsides[face]['bounding_boxes'].pop(kk)
                     dsides['left']['positions'] = pose
                     print('-------------------')
-        measurements, positions, galleries = assign_pose2panoramic(img, detected_org, dsides, feature_model)
+        measurements = assign_pose2panoramic(img, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
         filters, missed_filters, current_id = tracking(
-            measurements, positions, galleries, filters, frame_num, missed_filters, current_id
+            measurements, filters, frame_num, missed_filters, current_id
         )

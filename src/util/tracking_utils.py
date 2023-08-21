@@ -1,20 +1,5 @@
-import yaml
 import numpy as np
 from scipy.spatial.distance import cdist, mahalanobis
-
-def write_output(people, fid, file_name):
-    data = []
-    for k, p in enumerate(people):
-        position = {'x': p[0], 'y': p[1]}
-        pp = {'id' + str(k): position}
-        data.append(pp)
-    yaml_data = {'frame ' + str(fid): data}
-    output_file = file_name
-
-    # Open the file in write mode
-    with open(output_file, 'a') as file:
-        # Write the YAML data to the file
-        yaml.dump(yaml_data, file)
 
 
 def global_nearest_neighbor(reference_points, query_points, covariance_matrix):

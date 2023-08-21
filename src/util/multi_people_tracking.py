@@ -1,3 +1,5 @@
+import yaml
+
 from src.util.tracking_utils import *
 from src.util.visual_feature_utils import *
 from filterpy.kalman import UnscentedKalmanFilter
@@ -62,7 +64,7 @@ def find_tracker_newF(filter_i, positions, measurements, dt, galleries, attached
     return i, ids
 
 
-def tracking(measurements, positions, galleries, filters, frame_num, missed_filters, current_id):
+def tracking(measurements, filters, frame_num, missed_filters, current_id):
     print('frame num', str(frame_num))
     # Set the parameters
     num_states = 4  # Number of states (x, y, vx, vy)
@@ -78,7 +80,15 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
     # Set initial state and covariance matrix
     initial_covariance = np.eye(num_states) * 1.0  # Initial covariance matrix
     print(measurements)
-
+    positions = []
+    galleries = []
+    for p in range(0, current_id):
+        if measurements[str(p)]:
+            positions.append(measurements[str(p)]['position'][0])
+            galleries.append(measurements[str(p)]['visual_features'][0])
+        else:
+            positions.append([-100, -100])
+            galleries.append({-100, -100, -100, -100})
     if frame_num == 0:
         current_id = 0
         for i in range(0, len(measurements)):
@@ -137,7 +147,19 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
         for i in find_ids:
             missed_filters.pop(i)
     print('frame number:' + str(frame_num))
+    pp_data = []
     for filter_i in filters:
         print('ID:' + str(filter_i.object_id))
         print('Position:' + str(filter_i.x[:2]))
+        position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
+        pp = {'id ' + str(filter_i.object_id): position}
+        print(pp)
+        pp_data.append(pp)
+    frame = 'frame ' + str(frame_num)
+    yaml_data = {frame: pp_data}
+    output_file = 'tracks.yaml'
+    # Open the file in write mode
+    with open(output_file, 'a') as file:
+        yaml.dump(yaml_data, file)
+
     return filters, missed_filters, current_id

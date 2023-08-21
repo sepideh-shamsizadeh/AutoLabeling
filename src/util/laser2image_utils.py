@@ -18,6 +18,7 @@ def find_closest_position(pose0, pose1):
     else:
         return pose1
 
+
 def sides_points(dr_spaam):
     back_xy = []
     left_xy = []
@@ -46,7 +47,6 @@ def sides_points(dr_spaam):
             elif x < 0 and abs(x) >= abs(y):
                 front_xy.append((x, y))
     return back_xy, left_xy, right_xy, front_xy
-
 
 
 def laser_scan2xy(msg):
@@ -80,11 +80,8 @@ def convert_robotF2imageF(tmpx, tmpy, side_info):
     return [u, v]
 
 
-def check_intersection(d_bound, point, flag):
-    if flag:
-        offset = 15
-    else:
-        offset = 15
+def check_intersection(d_bound, point):
+    offset = 15
     if d_bound[0] < point[0] < d_bound[2]:
         if d_bound[1] < point[1] < d_bound[3]:
             return True
@@ -143,7 +140,7 @@ def selected_point(side_xy, side, side_info, face, detected, side_img):
                 u = 0
             if v < 0:
                 v = 0
-            if check_intersection(person, (u, v), False):
+            if check_intersection(person, (u, v)):
                 flag = True
                 p.append((u, v))
                 x_y.append((xy[0], xy[1]))
@@ -161,9 +158,10 @@ def selected_point(side_xy, side, side_info, face, detected, side_img):
                 if face == 'left':
                     u += 50
                     v -= 40
-                if check_intersection(person, (u, v), True):
+                if check_intersection(person, (u, v)):
                     p.append((u, v))
                     x_y.append((xy[0], xy[1]))
+
         x = 0
         y = 0
         if len(p) > 1:
@@ -178,8 +176,8 @@ def selected_point(side_xy, side, side_info, face, detected, side_img):
             XY_people[ind] = (x, y)
     for xy in XY_people:
         x, y = check_xy(xy, face)
-        u, v = convert_robotF2imageF(x, y, side_info)
-    #         draw_circle_bndBOX(u, v, side_img)
+        # u, v = convert_robotF2imageF(x, y, side_info)
+        #         draw_circle_bndBOX(u, v, side_img)
         print((x, y))
 
     return XY_people
