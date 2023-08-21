@@ -70,7 +70,7 @@ missed_filters = []
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(13, 100):
+for i in range(20, 100):
     path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
@@ -91,7 +91,7 @@ for i in range(13, 100):
         }
     }
     if os.path.exists(path):
-        img = cv2.imread(path)
+        img1 = cv2.imread(path)
         back, left, right, front = laser_scan2xy(scan[i])
         points = []
         for d in dr_spaam[i]:
@@ -101,13 +101,18 @@ for i in range(13, 100):
             points.append((x, y))
 
         back_xy, left_xy, right_xy, front_xy = sides_points(points)
-        img = Image.fromarray(img)
-        sides = CubeProjection(img, '')
+        # Convert BGR image to RGB
+        cv2_image_rgb = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+
+        # Convert the numpy array to a PIL image
+        pil_image = Image.fromarray(cv2_image_rgb)
+        # pil_image.show()
+
+        sides = CubeProjection(pil_image, '')
         sides.cube_projection()
         people = []
         people_img = []
-        image = np.array(img)
-        detected_org, objects_poses = detect_people.detect_person(image, detection_model)
+        detected_org, objects_poses = detect_people.detect_person(img1, detection_model)
         for face, side_img in sides.sides.items():
             if face in FACE_NAMES:
                 cv_image = np.array(side_img)
@@ -124,7 +129,8 @@ for i in range(13, 100):
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
                         else:
-                            dsides[face]['bounding_boxes'].pop(kk)
+                            people.append((2.5, 0))
+                            pose.append((2.5, 0))
                     dsides[face]['positions'] = pose
                     print('-------------------')
                 elif face == 'front':
@@ -135,7 +141,8 @@ for i in range(13, 100):
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
                         else:
-                            dsides[face]['bounding_boxes'].pop(kk)
+                            people.append((-2.5, 0))
+                            pose.append((-2.5, 0))
                     dsides['front']['positions'] = pose
                     print('-------------------')
                 elif face == 'right':
@@ -146,7 +153,8 @@ for i in range(13, 100):
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
                         else:
-                            dsides[face]['bounding_boxes'].pop(kk)
+                            people.append((0, 2.5))
+                            pose.append((0, 2.5))
                     dsides['right']['positions'] = pose
                     print('-------------------')
                 elif face == 'left':
@@ -157,10 +165,11 @@ for i in range(13, 100):
                             people.append((xy[0], xy[1]))
                             pose.append((xy[0], xy[1]))
                         else:
-                            dsides[face]['bounding_boxes'].pop(kk)
+                            people.append((0, -2.5))
+                            pose.append((0, -2.5))
                     dsides['left']['positions'] = pose
                     print('-------------------')
-        measurements = assign_pose2panoramic(img, detected_org, dsides, feature_model)
+        measurements = assign_pose2panoramic(pil_image, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
         filters, missed_filters, current_id = tracking(
             measurements, filters, frame_num, missed_filters, current_id
