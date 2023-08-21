@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import torch
 from numpy import random
-
+from PIL import Image
 
 sys.path.append('/home/sepid/workspace/AutoLabeling/src/yolov7/')
 from yolov7.models.experimental import attempt_load
@@ -16,7 +16,6 @@ from yolov7.utils.datasets import letterbox, LoadImages
 from yolov7.utils.general import check_img_size, non_max_suppression, scale_coords, xyxy2xywh, set_logging, xyn2xy
 from yolov7.utils.plots import plot_one_box
 from yolov7.utils.torch_utils import select_device, time_synchronized, load_classifier, TracedModel
-
 
 def load_model():
     weights = 'yolov7.pt'
@@ -72,8 +71,6 @@ def detect_person(img0, model):
     if img.ndimension() == 3:
         img = img.unsqueeze(0)
 
-
-
     # Inference
     t1 = time_synchronized()
     with torch.no_grad():  # Calculating gradients would cause a GPU memory leak
@@ -105,11 +102,11 @@ def detect_person(img0, model):
                 if names[int(cls)] == 'person':
                     # print(names[int(cls)])
                     label = f'{names[int(cls)]} {conf:.2f}'
-                    plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
+                    # plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
                     poses.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
                 else:
                     label = f'{names[int(cls)]} {conf:.2f}'
-                    plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
+                    # plot_one_box(xyxy, img0, label=label, color=colors[int(cls)], line_thickness=1)
                     obejcts_poses.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
 
     # cv2.imshow("image", img0)
@@ -120,8 +117,11 @@ def detect_person(img0, model):
 
 
 if __name__ == '__main__':
-    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_64.jpg')  # BGR
+    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_110.jpg')  # BGR
     # cv2.imshow("image", img0)
     # cv2.waitKey(0)
     model = load_model()
-    p = detect_person(img0, model)
+    p, _ = detect_person(img0, model)
+    d = sorted(p, key=lambda x: x[0])
+    img = Image.fromarray(img0)
+    # concatenate_person(d.pop(), d[0], img)

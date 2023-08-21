@@ -106,8 +106,9 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
                 print(str(filter_i.object_id) + ' is missed in frame number' + str(frame_num))
                 filters.pop(k)
         ind = 0
+        find_ids = []
         while ind < len(measurements):
-            id_dic = keys = measurements.keys()
+            id_dic = measurements.keys()
             for k, mfilter_i in enumerate(missed_filters):
                 i, ids = find_tracker_newF(mfilter_i, positions, measurements, dt, galleries, attached)
                 if i >= 0:
@@ -120,16 +121,23 @@ def tracking(measurements, positions, galleries, filters, frame_num, missed_filt
                     estimated_state = mfilter_i.x  # Estimated state after each update
                     estimated_covariance = mfilter_i.P
                     filters.append(mfilter_i)
-                    missed_filters.pop(k)
+                    # missed_filters.pop(k)
+                    find_ids.append(k)
                     ind += 1
                     print('find person with id' + mfilter_i.object_id)
                 else:
-                    filter_i = creat_new_filter(measurements[list(id_dic)[ind]], current_id, initial_covariance, num_states,
-                                                num_measurements, dt, Q, R)
-                    measurements.pop(list(id_dic)[ind])
-                    filters.append(filter_i)
-                    print('new id' + str(current_id))
-                    current_id += 1
-
-
+                    if len(id_dic):
+                        filter_i = creat_new_filter(measurements[list(id_dic)[ind]], current_id, initial_covariance,
+                                                    num_states,
+                                                    num_measurements, dt, Q, R)
+                        measurements.pop(list(id_dic)[ind])
+                        filters.append(filter_i)
+                        print('new id' + str(current_id))
+                        current_id += 1
+        for i in find_ids:
+            missed_filters.pop(i)
+    print('frame number:' + str(frame_num))
+    for filter_i in filters:
+        print('ID:' + str(filter_i.object_id))
+        print('Position:' + str(filter_i.x[:2]))
     return filters, missed_filters, current_id
