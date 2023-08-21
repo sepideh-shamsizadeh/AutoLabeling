@@ -10,6 +10,8 @@ import torch
 from numpy import random
 from PIL import Image
 
+from src.util.assign_pose2panoramic import concatenate_person
+
 sys.path.append('/home/sepid/workspace/AutoLabeling/src/yolov7/')
 from yolov7.models.experimental import attempt_load
 from yolov7.utils.datasets import letterbox, LoadImages
@@ -124,4 +126,5 @@ if __name__ == '__main__':
     p, _ = detect_person(img0, model)
     d = sorted(p, key=lambda x: x[0])
     img = Image.fromarray(img0)
-    # concatenate_person(d.pop(), d[0], img)
+    img2 = concatenate_person(d.pop(), d[0], img)
+    print(img2.width, img2.height, img2.size)

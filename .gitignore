@@ -41,3 +41,5 @@ src/util/__pycache__/
 src/auto_calibration_tools/scripts/__pycache__/
 
 
+src/util/temporary.py
+
