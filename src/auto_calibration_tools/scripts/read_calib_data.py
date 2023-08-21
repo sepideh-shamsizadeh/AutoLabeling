@@ -86,10 +86,10 @@ class RangeImagePublisher:
             bag_name = self.key_list[self.pointer]
             self.publish_range_and_image(bag_name)
             self.pointer = self.pointer+1
-            return self.get_current_data()
+            return self.get_current_data(), [self.pointer, self.data_size]
         else:
             print("No more data....")
-            return 0, 0
+            return (None, None), None
 
     def get_current_data(self):
         return self.laser_ranges, self.image_data
