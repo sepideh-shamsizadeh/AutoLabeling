@@ -53,4 +53,7 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/right
 src/auto_calibration_tools/scripts/camera_laser_calibration/top
 *.pth
 src/util/temporary.py
+src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test/
+src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor/
+
 
