@@ -13,9 +13,9 @@ import pickle
 parser = argparse.ArgumentParser(description="Train a one-shot detector")
 
 # Add a command-line argument
-parser.add_argument('--size_w', type=int, help='Widht of the board in corners', default=6)
-parser.add_argument('--size_h', type=int, help='Height of the board in corners', default=9)
-parser.add_argument('--square_size', type=float, help='Size of a square in the chessboard', default=0.025)
+parser.add_argument('--size_w', type=int, help='Widht of the board in corners', default=5)
+parser.add_argument('--size_h', type=int, help='Height of the board in corners', default=6)
+parser.add_argument('--square_size', type=float, help='Size of a square in the chessboard', default=0.11)
 
 # Parse the command-line arguments
 args = parser.parse_args()

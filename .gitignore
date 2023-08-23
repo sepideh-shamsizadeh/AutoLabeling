@@ -51,7 +51,6 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/one_shot_object_dete
 src/auto_calibration_tools/scripts/camera_laser_calibration/__pycache__
 src/auto_calibration_tools/scripts/camera_laser_calibration/right
 src/auto_calibration_tools/scripts/camera_laser_calibration/top
-
-
+*.pth
 src/util/temporary.py
 

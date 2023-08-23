@@ -24,16 +24,26 @@ class CubeProjection:
             5: 'bottom'
         }
 
+        FACE_NAMES_RED = {
+            0: 'back',
+            1: 'left',
+            2: 'front',
+            3: 'right',
+        }
+
         if face_id is None:
-            for face in range(6):
+            img_sides = []
+            for face in range(4):
                 imgOut = Image.new('RGB', (faceSize, faceSize), 'black')
                 side = self.convertFace(imgIn, imgOut, face)
+                img_sides.append(imgOut)
                 if self.output_path != '':
-                    save_path = os.path.join(self.output_path,FACE_NAMES[face],img_id+'.jpg')
+                    save_path = os.path.join(self.output_path,FACE_NAMES_RED[face]+img_id+'.jpg')
                     print("SAVED: ", save_path)
                     imgOut.save(save_path)
                 else:
                     self.sides.append({FACE_NAMES[face]: side})
+            return img_sides
         else:
             face = face_id
             imgOut = Image.new('RGB', (faceSize, faceSize), 'black')
@@ -44,6 +54,7 @@ class CubeProjection:
                 imgOut.save(save_path)
             else:
                 self.sides.append({FACE_NAMES[face]: side})
+            return imgOut
 
 
     def outImg2XYZ(self, i, j, faceIdx, faceSize):

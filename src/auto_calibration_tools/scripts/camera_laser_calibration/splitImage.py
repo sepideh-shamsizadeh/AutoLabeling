@@ -65,7 +65,7 @@ def main():
     folder_path =  "images"
     image_paths = [os.path.join(folder_path, filename) for filename in os.listdir(folder_path) if filename.endswith(('.jpg', '.png', '.jpeg'))]
 
-    for i,image_path in tqdm(enumerate(image_paths)):
+    for i,image_path in enumerate(image_paths):
 
         print("Processing image: ", image_path) 
         image = cv2.imread(image_path)
@@ -74,10 +74,6 @@ def main():
         test_tensor = F.to_tensor(image).unsqueeze(0).to(device)
         predictions = model(test_tensor)[0]
 
-        if predictions['boxes'].shape[0] <= 0:
-            print(f"!!! No detections in {image_path}")
-            continue
-
         # Find the index of the bounding box with the highest score
         max_score_idx = torch.argmax(predictions['scores'])
 
@@ -85,7 +81,7 @@ def main():
         max_score_box = predictions['boxes'][max_score_idx].detach().cpu().numpy()
         max_score = predictions['scores'][max_score_idx]
 
-         # Enlarge the bounding box by a factor of 1.2 (adjust as needed)
+        #  # Enlarge the bounding box by a factor of 1.2 (adjust as needed)
         # enlargement_factor = 1.0
         # box = [
         #     int(np.round(
@@ -100,19 +96,19 @@ def main():
         #
         # # Crop a slice of the image using the horizontal pixel coordinates
         # cropped_image = image[box[1]:box[3], box[0]:box[2]]
-
+        #
         # plt.imshow(cropped_image)
         # plt.show()
 
         side = map_bounding_box_to_side(max_score_box)
 
         if side is not None:
+            
             cube = CubeProjection(Image.fromarray(image), ".")
             cube.cube_projection(face_id=side[0], img_id="int_cal_img{}".format(i))
-            print(f"Detected board in {side} of {image_path}")
-        else:
-            print("Side is not well defined, skipping...")
         
+
+
 
 if __name__ == "__main__":
 
