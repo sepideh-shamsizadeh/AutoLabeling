@@ -2,13 +2,14 @@ import numpy as np
 from scipy.spatial.distance import cdist, mahalanobis
 
 
-def global_nearest_neighbor(reference_points, query_points, covariance_matrix):
+def global_nearest_neighbor(reference_points, query_points, covariance_matrix, ids):
     reference_points = np.array(reference_points)
-    distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
     neighbors = []
-    for i, dis in enumerate(distances):
-        if dis <= 0.7:
-            neighbors.append(i)
+    if len(reference_points) > 0 and len(query_points) > 0:
+        distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
+        for i, dis in zip(ids, distances):
+            if dis <= 0.7:
+                neighbors.append(i)
     return neighbors
 
 
