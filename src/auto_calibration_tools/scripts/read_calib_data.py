@@ -53,6 +53,7 @@ class RangeImagePublisher:
                 self.bag_data[bag_name] = laser_ranges
 
     def publish_range_and_image(self, bag_name):
+
         if bag_name in self.bag_data:
             laser_ranges = self.bag_data[bag_name]
             self.laser_ranges = laser_ranges

@@ -8,8 +8,10 @@ import os
 
 rospy.init_node('sync_image_scan', anonymous=True)
 
-#SAVE_ROOT = "/home/iaslab/ROS_AUTOLABELLING/AutoLabeling/src/auto_calibration_tools/scripts/calibration_data_extrinsics"
-SAVE_ROOT = "/home/iaslab/ROS_AUTOLABELLING/AutoLabeling/src/auto_calibration_tools/scripts/calibration_data_intrinsics/images"
+# Retrieve parameters
+SAVE_ROOT = rospy.get_param("~SAVE_ROOT", "./calibration_data_extrinsics/images")
+num_images_to_save = rospy.get_param("~num_images_to_save", 100)
+save_interval = rospy.get_param("~save_interval", 2)  # Adjust the interval as needed (in seconds)
 
 if not os.path.exists(SAVE_ROOT):
     os.makedirs(SAVE_ROOT)
@@ -50,6 +52,8 @@ def sync_callback(image_msg, scan_msg):
 
     image_counter += 1
 
+    return image_data, scan_msg
+
 def image_callback(msg):
     global image_msg
     image_msg = msg
@@ -58,14 +62,13 @@ def scan_callback(msg):
     global scan_msg
     scan_msg = msg
 
-
-
 rospy.Subscriber('/theta_camera/image_raw', Image, image_callback)
 rospy.Subscriber('/scan', LaserScan, scan_callback)
 
 previous_time = time.time()
 cont = 0
-while not rospy.is_shutdown():
+while not rospy.is_shutdown() and image_counter < num_images_to_save:
+    
     current_time = time.time()
     elapsed_time = current_time - previous_time
 
@@ -77,7 +80,7 @@ while not rospy.is_shutdown():
     print(f"[Elapsed time: {elapsed_time}] Acquired {cont} pictures...")
     rate.sleep()  # Use ROS rate to control loop frequency
 
-rospy.spin()
+#rospy.spin()
 print(len(images), len(scans))
 # Save scan with image ID
 scan_filename = os.path.join(SAVE_ROOT, f"scan.csv")
