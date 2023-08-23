@@ -1,0 +1,17 @@
+<launch>
+  <!-- Declare parameters as arguments -->
+  <arg name="SAVE_ROOT" default="/home/iaslab/ROS_AUTOLABELLING/AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration/images"/>
+  <arg name="num_images_to_save" default="100"/>
+
+  <!-- Declare the node -->
+  <node
+    name="acquire_data_calibration"
+    pkg="auto_calibration_tools"
+    type="sync_image_scan2.py"
+    output="screen">
+    <!-- Pass parameters to the node using arguments -->
+    <param name="SAVE_ROOT" value="$(arg SAVE_ROOT)"/>
+    <param name="num_images_to_save" value="$(arg num_images_to_save)"/>
+  </node>
+</launch>
+
