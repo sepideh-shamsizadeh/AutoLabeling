@@ -1,6 +1,6 @@
 <launch>
   <!-- Declare parameters as arguments -->
-  <arg name="SAVE_ROOT" default="/home/iaslab/ROS_AUTOLABELLING/AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration/images"/>
+  <arg name="SAVE_ROOT" default="/home/iaslab/ROS_AUTOLABELLING/AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test"/>
   <arg name="num_images_to_save" default="100"/>
 
   <!-- Declare the node -->
