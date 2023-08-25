@@ -48,6 +48,7 @@ class CubeProjection:
 
 
     def outImg2XYZ(self, i, j, faceIdx, faceSize):
+
         a = 2.0 * float(i) / faceSize
         b = 2.0 * float(j) / faceSize
 

@@ -66,5 +66,8 @@ src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_FHD/
 src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_UHD/
 src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_UHD2/
 src/auto_calibration_tools/scripts/calibration_data_intrinsics/intrinsicsUHD.pkl
+src/auto_calibration_tools/scripts/camera_laser_calibration/backgrounds_UHD/sides/
+src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_pointsUHD.pkl
+
 
 .ignore.swp

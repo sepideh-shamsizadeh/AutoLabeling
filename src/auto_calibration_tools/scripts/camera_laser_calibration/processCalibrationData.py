@@ -19,6 +19,31 @@ from scipy.optimize import minimize
 
 from tqdm import tqdm
 
+class Reporter:
+
+    def __init__(self):
+
+        self.report = {
+            'failures':{
+                'chessboard_not_detected': 0,
+                'chessboard_not_detected_cropping': 0,
+                'corners_not_found': 0,
+                'unable_to_cube_project': 0,
+                'not_enough_laser_patterns': 0,
+                'low_confidence_laser_pattern': 0,
+            }
+        }
+
+    def updateFailure(self, failure_name):
+
+        self.report['failures'][failure_name] +=1
+
+    def printReport(self, category):
+
+        for key, value in self.report[category].items():
+            print("{} : {}".format(key, value))
+
+
 class Plotter:
     def __init__(self, subplot_shape=(2, 2)):
         self.subplot_shape = subplot_shape
@@ -88,12 +113,14 @@ def map_bounding_box_to_side(bounding_box, scale=1):
 
 class ImagePointFinder:
 
-    def __init__(self, plotter=None):
+    def __init__(self, plotter=None, rep=None):
 
         if plotter is not None:
             self.plot = plotter.getSubplot(1)
         else:
             self.plot = None
+
+        self.reporter = rep
 
         ####### CAMERA MATRIX (TRIAL)
         calib_file = "../calibration_data_intrinsics/intrinsicsUHD.pkl"
@@ -114,7 +141,7 @@ class ImagePointFinder:
                 print(f"Folder '{side}' already exists.")
 
         model_state_dict = torch.load("one_shot_object_detector_5x3_UHD.pth")
-        model_state_dict_side = torch.load("one_shot_object_detector_5x3_UHD.pth")
+        model_state_dict_side = torch.load("one_shot_object_detector_5x3_UHD_SIDES.pth")
 
         # Create an instance of the model
         self.model = fasterrcnn_resnet50_fpn(pretrained=False)
@@ -142,7 +169,7 @@ class ImagePointFinder:
         # termination criteria
         self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
         self.device = device
-        self.scale_factor = 4
+        self.scale_factor = 1
 
     def processImage(self, image_path, verbose=True):
 
@@ -160,6 +187,8 @@ class ImagePointFinder:
 
         if len(predictions['boxes']) < 2:
             print("CHECKERBOARD NOT DETECT")
+            if self.reporter is not None:
+                self.reporter.updateFailure('chessboard_not_detected')
             return None
 
         # Get the bounding box and score with the highest score
@@ -193,6 +222,8 @@ class ImagePointFinder:
 
             if len(predictions['boxes']) < 2:
                 print("CHECKERBOARD NOT DETECT (2nd round)")
+                if self.reporter is not None:
+                    self.reporter.updateFailure('chessboard_not_detected_cropping')
                 return None
 
             # Get the bounding box and score with the highest score
@@ -290,17 +321,21 @@ class ImagePointFinder:
 
             else:
                 print("Unable to find corners, skipping...")
+                if self.reporter is not None:
+                    self.reporter.updateFailure('corners_not_found')
                 return None
 
         else:
             print("Not possible to remap in a side, skipping...")
+            if self.reporter is not None:
+                self.reporter.updateFailure('unable_to_cube_project')
             return None
 
 
 
 class LaserPointFinder:
 
-    def __init__(self, laser_spec, template_radious=0.420, detection_confidence=0.3, plotter=None):
+    def __init__(self, laser_spec, template_radious=0.420, detection_confidence=0.3, plotter=None, rep=None):
 
 
         self.angle_max = laser_spec['angle_max']
@@ -313,6 +348,8 @@ class LaserPointFinder:
             self.plot = plotter.getSubplot(2)
         else:
             self.plot = None
+
+        self.reporter = rep
 
         ##### PARAMETERS
         #################
@@ -462,6 +499,9 @@ class LaserPointFinder:
         if cont == 0:
             if  verbose and self.plot is not None:
                 self.plot.cla()
+
+            if self.reporter is not None:
+                self.reporter.updateFailure('not_enough_laser_patterns')
             return None
 
         if verbose and self.plot is not None:
@@ -518,6 +558,8 @@ class LaserPointFinder:
             return final_point
         else:
             print("Confidence is too low! Discard the detection...")
+            if self.reporter is not None:
+                self.reporter.updateFailure('low_confidence_laser_pattern')
             return None
 
     def template_matching(self, point_cloud, template, initial_params=np.array([0, 0, 0])):
@@ -560,6 +602,7 @@ def main():
     csv_file_path = os.path.join(image_folder,'scan.csv')
 
     plotter = Plotter((1,2))
+    reporter = Reporter()
 
     # Define laser specification
     laser_spec = {
@@ -571,8 +614,8 @@ def main():
         'range_max': 25.0
     }
 
-    img_processor = ImagePointFinder(plotter=plotter)
-    laser_processor = LaserPointFinder(laser_spec, plotter=plotter)
+    img_processor = ImagePointFinder(plotter=plotter, rep=reporter)
+    laser_processor = LaserPointFinder(laser_spec, plotter=plotter, rep=reporter)
 
     good_points = {
         "back": [],
@@ -587,7 +630,7 @@ def main():
 
         for i, row in enumerate(csvreader):
 
-            # if i<17: #FOR TESTING
+            # if i<120: #FOR TESTING
             #     continue
 
             bag_name = row[0]
@@ -630,6 +673,17 @@ def main():
                     data = ((C, left),(B, right))
                     good_points[side[1]].append(data)
 
+            if i%25 == 0:
+
+                # Specify the file path where you want to save the dictionary
+                file_path = "cameraLaser_pointsUHD.pkl"
+                # save dictionary to pkl file
+                with open(file_path, 'wb') as fp:
+                    pickle.dump(good_points, fp)
+                    print('Temporary saved to {}'.format(file_path))
+
+                reporter.printReport('failures')
+
             print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 
@@ -639,10 +693,13 @@ def main():
     # Specify the file path where you want to save the dictionary
     file_path = "cameraLaser_pointsUHD.pkl"
 
-    # save dictionary to person_data.pkl file
+    # save dictionary to pkl file
     with open(file_path, 'wb') as fp:
         pickle.dump(good_points, fp)
         print('Dictionary saved successfully to {}'.format(file_path))
+
+
+    reporter.printReport('failures')
 
     print("***************** PROCESSING ENDS")
 

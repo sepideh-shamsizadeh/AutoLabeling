@@ -38,7 +38,7 @@ class CubeProjection:
                 side = self.convertFace(imgIn, imgOut, face)
                 img_sides.append(imgOut)
                 if self.output_path != '':
-                    save_path = os.path.join(self.output_path,FACE_NAMES_RED[face]+img_id+'.jpg')
+                    save_path = os.path.join(self.output_path,FACE_NAMES_RED[face]+img_id+'.png')
                     print("SAVED: ", save_path)
                     imgOut.save(save_path)
                 else:
@@ -49,7 +49,7 @@ class CubeProjection:
             imgOut = Image.new('RGB', (faceSize, faceSize), 'black')
             side = self.convertFace(imgIn, imgOut, face)
             if self.output_path != '':
-                save_path = os.path.join(self.output_path,FACE_NAMES[face],img_id+'.jpg')
+                save_path = os.path.join(self.output_path,FACE_NAMES[face],img_id+'.png')
                 print("SAVED: ", save_path)
                 imgOut.save(save_path)
             else:

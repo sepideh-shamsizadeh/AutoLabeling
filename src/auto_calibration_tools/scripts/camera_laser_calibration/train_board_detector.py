@@ -183,7 +183,7 @@ def main():
 
     # Define paths
     root = args.folder
-    backgrounds_folder = os.path.join(root,'backgrounds_UHD')
+    backgrounds_folder = os.path.join(root,'backgrounds_UHD/sides')
     target_image_path = os.path.join(root,'target_UHD.png')  # The image with transparency
     target2_image_path = os.path.join(root,'target2_UHD.png')  # The image with transparency
     output_folder = 'synthetic_data/'
@@ -250,7 +250,7 @@ def main():
 
 
     # Save the trained model
-    save_path = os.path.join(root, 'one_shot_object_detector_5x3_UHD.pth')
+    save_path = os.path.join(root, 'one_shot_object_detector_5x3_UHD_SIDES.pth')
     torch.save(model.state_dict(), save_path)
 
 
