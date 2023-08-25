@@ -183,11 +183,11 @@ def main():
 
     # Define paths
     root = args.folder
-    backgrounds_folder = os.path.join(root,'backgrounds/sides')
-    target_image_path = os.path.join(root,'target.png')  # The image with transparency
-    target2_image_path = os.path.join(root,'target2.png')  # The image with transparency
+    backgrounds_folder = os.path.join(root,'backgrounds_UHD')
+    target_image_path = os.path.join(root,'target_UHD.png')  # The image with transparency
+    target2_image_path = os.path.join(root,'target2_UHD.png')  # The image with transparency
     output_folder = 'synthetic_data/'
-    test_image_folder = os.path.join(root, 'images/')
+    test_image_folder = os.path.join(root, 'images_UHD/')
 
     # Load the target image (with transparency)
     target_image = Image.open(target_image_path).convert('RGBA')
@@ -199,7 +199,7 @@ def main():
     # Create the synthetic dataset and DataLoader
     num_synthetic_samples = 500
     synthetic_dataset = SyntheticDataset(target_image, target_image2, backgrounds, num_synthetic_samples, device=device, use_advanced_aug=args.adv_aug)
-    train_loader = DataLoader(synthetic_dataset, batch_size=4, shuffle=True)
+    train_loader = DataLoader(synthetic_dataset, batch_size=2, shuffle=True)
 
     # Load a pre-trained Faster R-CNN model
     model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1)
@@ -250,7 +250,7 @@ def main():
 
 
     # Save the trained model
-    save_path = os.path.join(root, 'one_shot_object_detector_5x3_SIDES.pth')
+    save_path = os.path.join(root, 'one_shot_object_detector_5x3_UHD.pth')
     torch.save(model.state_dict(), save_path)
 
 

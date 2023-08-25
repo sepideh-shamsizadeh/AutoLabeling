@@ -90,6 +90,7 @@ make
 ## Run the camera
 
 ```
+cd your_workspace/src/ricoh_theta_z1/src/libuvc-theta-sample/gst
 sh streaming_theta.sh
 ```
 ```
@@ -102,6 +103,70 @@ rosrun auto_calibration_tools camera.py
 
 ## Intrinsics
 
-## Extrinsics
+### Collect data
+Connect the PC to the robot and the camera. Start up the camera. You can use:
+```
+roslaunch auto_calibration_tools acquireCalibrationData.launch
+```
+Be careful to set `SAVE_ROOT`  to `~/AutoLabeling/src/auto_calibration_tools/scripts/calibration_data_intrinsics/images` in the launch file. 
+Move around with the chessboard. Default is a [] chessboard.
+
+### Train the board detector
+
+The chessboard is detected automatically in the image to remap it in the right side. You can easily train a detector for your chessboard
+
+```commandline
+cd AutoLabeling/src/auto_calibration_tools/scripts/calibration_data_intrinsics
+python3 train_board_detector.py
+```
+The scripts read images from `backgrounds/` folder and `target.png` to train a one-shot detector. 
+
+### Run calibration
+
+```commandline
+cd AutoLabeling/src/auto_calibration_tools/scripts/calibration_data_intrinsics
+python3 splitImage.py
+```
+This step split each panoramic image in the 6 cube projections. It reads the panoramic images from `/images`.
+
+```commandline
+python3 calibrateIntrinsics.py
+```
+gives the intrinsics calibration parameters for each view of the cube projection in `intrinsics.pkl`
+
+## Camera-Laser Extrinsics
+
+### Collect data
+Connect the PC to the robot and the camera. Start up the camera. You can use:
+```
+roslaunch auto_calibration_tools acquireCalibrationData.launch
+```
+Be careful to set `SAVE_ROOT`  to `~/AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor` in the launch file. 
+
+Move the robot around the board. We suggest to do this in an empty room or in outdoor to avoid spourious detections. 
+
+### Train the board detector
+
+The chessboard is detected automatically in the image to remap it in the correct side. You can easily train a detector for your chessboard
+
+```commandline
+cd AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration
+python3 train_board_detector.py
+```
+The scripts read images from `backgrounds/` folder and `target.png`,`target2.png` to train a one-shot detector. 
+
+### Run calibration
+
+```commandline
+cd AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration
+python3 processCalibrationData.py
+```
+This step extracts features from each image and laser scan couple. The results are saved into `cameraLaser_points.pkl`
+
+```commandline
+cd AutoLabeling/src/auto_calibration_tools/scripts/camera_laser_calibration
+python3 calibrateCameraLaser.py
+```
+is used to calibrate each side of the cube projection with the laser. The output is an H matrix to map from laser plane to the image plane (one for each side). 
 
 # AutoLabeling

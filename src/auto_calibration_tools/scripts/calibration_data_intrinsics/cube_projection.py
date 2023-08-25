@@ -3,6 +3,7 @@ from math import pi, sin, cos, tan, atan2, hypot, floor
 from numpy import clip
 import glob
 import os
+import numpy as np
 
 
 class CubeProjection:
@@ -103,6 +104,62 @@ class CubeProjection:
                     A[2] * (1 - mu) * (1 - nu) + B[2] * (mu) * (1 - nu) + C[2] * (1 - mu) * nu + D[2] * mu * nu)
 
                 outpix[xout, yout] = (int(round(r)), int(round(g)), int(round(b)))
+
+    def outImg2XYZ2(self, i, j, faceIdx, faceSize):
+        a = 2.0 * i / faceSize
+        b = 2.0 * j / faceSize
+
+        if faceIdx == 0:  # back
+            return (-1.0, 1.0 - a, 1.0 - b)
+        elif faceIdx == 1:  # left
+            return (a - 1.0, -1.0, 1.0 - b)
+        elif faceIdx == 2:  # front
+            return (1.0, a - 1.0, 1.0 - b)
+        elif faceIdx == 3:  # right
+            return (1.0 - a, 1.0, 1.0 - b)
+        elif faceIdx == 4:  # top
+            return (b - 1.0, a - 1.0, 1.0)
+        elif faceIdx == 5:  # bottom
+            return (1.0 - b, a - 1.0, -1.0)
+
+    def convertFace2(self, imgin, imgout, faceIdx):
+        inSize = np.array(imgin.size)
+        outSize = np.array(imgout.size)
+        inpix = np.array(imgin)
+        outpix = np.zeros_like(inpix)
+        facesize = outSize[0]
+
+        xout, yout = np.meshgrid(range(facesize), range(facesize))
+        xout, yout = xout.flatten(), yout.flatten()
+
+        (x, y, z) = self.outImg2XYZ2(xout, yout, faceIdx, facesize)
+        theta = np.arctan2(y, x)
+        r = np.hypot(x, y)
+        phi = np.arctan2(z, r)
+
+        # Source img coords
+        uf = 0.5 * inSize[0] * (theta + np.pi) / np.pi
+        vf = 0.5 * inSize[0] * (np.pi / 2 - phi) / np.pi
+
+        # Use bilinear interpolation between the four surrounding pixels
+        ui = np.floor(uf).astype(int)  # coord of pixel to bottom left
+        vi = np.floor(vf).astype(int)
+        u2 = ui + 1  # coords of pixel to top right
+        v2 = vi + 1
+        mu = uf - ui  # fraction of way across pixel
+        nu = vf - vi
+
+        # Pixel values of four corners
+        A = inpix[ui % inSize[0], np.clip(vi, 0, inSize[1] - 1)]
+        B = inpix[u2 % inSize[0], np.clip(vi, 0, inSize[1] - 1)]
+        C = inpix[ui % inSize[0], np.clip(v2, 0, inSize[1] - 1)]
+        D = inpix[u2 % inSize[0], np.clip(v2, 0, inSize[1] - 1)]
+
+        # Interpolate
+        r = A * (1 - mu) * (1 - nu) + B * mu * (1 - nu) + C * (1 - mu) * nu + D * mu * nu
+
+        outpix[xout, yout] = r.reshape((facesize, facesize, 3)).astype(int)
+        imgout.putdata([tuple(pixel) for pixel in outpix.reshape(-1, 3)])
 
 
 if __name__ == '__main__':

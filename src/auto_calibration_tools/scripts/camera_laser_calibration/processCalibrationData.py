@@ -68,20 +68,20 @@ def cartesian_to_polar(cartesian_points):
     return np.column_stack((angles_deg, magnitudes))
 
 
-def map_bounding_box_to_side(bounding_box):
+def map_bounding_box_to_side(bounding_box, scale=1):
     u1, y1, u2, v2 = bounding_box
 
-    if (u1 >= 0 and u2 < 240) or (u1 >= 1720 and u2 < 1960):
-        if 240 <= v2 < 720:
+    if (u1 >= 0 and u2 < scale*240) or (u1 >= scale*1720 and u2 < scale*1960):
+        if scale*240 <= v2 < scale*720:
             return (0, "back")
-    elif u1 >= 240 and u2 < 720:
-        if 240 <= v2 < 720:
+    elif u1 >= scale*240 and u2 < scale*720:
+        if scale*240 <= v2 < scale*720:
             return (1, "left")
-    elif u1 >= 720 and u2 < 1200:
-        if 240 <= v2 <720:
+    elif u1 >= scale*720 and u2 < scale*1200:
+        if scale*240 <= v2 <scale*720:
             return (2, "front")
-    elif u1 >= 1200 and u2 < 1720:
-        if 240 <= v2 < 720:
+    elif u1 >= scale*1200 and u2 < scale*1720:
+        if scale*240 <= v2 < scale*720:
             return (3, "right")
     return None  # Bounding box doesn't fit any side
 
@@ -96,7 +96,7 @@ class ImagePointFinder:
             self.plot = None
 
         ####### CAMERA MATRIX (TRIAL)
-        calib_file = "../calibration_data_intrinsics/intrinsics.pkl"
+        calib_file = "../calibration_data_intrinsics/intrinsicsUHD.pkl"
         # Open the pickle file for reading in binary mode
         with open(calib_file, 'rb') as file:
             # Load the dictionary from the pickle file
@@ -113,8 +113,8 @@ class ImagePointFinder:
             else:
                 print(f"Folder '{side}' already exists.")
 
-        model_state_dict = torch.load("one_shot_object_detector_5x3.pth")
-        model_state_dict_side = torch.load("one_shot_object_detector_5x3_SIDES.pth")
+        model_state_dict = torch.load("one_shot_object_detector_5x3_UHD.pth")
+        model_state_dict_side = torch.load("one_shot_object_detector_5x3_UHD.pth")
 
         # Create an instance of the model
         self.model = fasterrcnn_resnet50_fpn(pretrained=False)
@@ -142,7 +142,7 @@ class ImagePointFinder:
         # termination criteria
         self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
         self.device = device
-        self.scale_factor = 2
+        self.scale_factor = 4
 
     def processImage(self, image_path, verbose=True):
 
@@ -174,7 +174,7 @@ class ImagePointFinder:
 
         # Create the merged bounding box
         merged_bbox = [x1, y1, x2, y2]
-        side = map_bounding_box_to_side(merged_bbox)
+        side = map_bounding_box_to_side(merged_bbox, scale = 2)
 
         if side is not None:
             cube = CubeProjection(Image.fromarray(image), ".")
@@ -554,9 +554,9 @@ class LaserPointFinder:
 
 def main():
 
-    verbose = True
+    verbose = False
 
-    image_folder = './images_outdoor'
+    image_folder = './images_UHD'
     csv_file_path = os.path.join(image_folder,'scan.csv')
 
     plotter = Plotter((1,2))
@@ -637,7 +637,7 @@ def main():
         print(f"[{key}] Total tuples detected: {len(value)}")
 
     # Specify the file path where you want to save the dictionary
-    file_path = "cameraLaser_points.pkl"
+    file_path = "cameraLaser_pointsUHD.pkl"
 
     # save dictionary to person_data.pkl file
     with open(file_path, 'wb') as fp:
@@ -645,13 +645,6 @@ def main():
         print('Dictionary saved successfully to {}'.format(file_path))
 
     print("***************** PROCESSING ENDS")
-
-
-
-
-
-
-
 
 
 

@@ -11,24 +11,40 @@ def convert_robotF2imageF(tmpx, tmpy, side_info):
     Zc = H[4] * tmpx + H[5] * tmpy + H[8]
     u = ((fu * H[0] + u0 * H[4]) * tmpx + (fu * H[1] + u0 * H[5]) * tmpy + fu * H[6] + u0 * H[8]) / Zc
     v = ((fv * H[2] + v0 * H[4]) * tmpx + (fv * H[3] + v0 * H[5]) * tmpy + fv * H[7] + v0 * H[8]) / Zc
+
+    # Zc = H[2] * tmpx + H[5] * tmpy + H[8]
+    # u = ((fu * H[0] + u0 * H[2]) * X + (fu * H[3] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / Zc
+    # v = ((fv * H[1] + v0 * H[2]) * X + (fv * H[4] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / Zc
+
     return [u, v]
 
 def compute_error1(H, A, B, X, Y, fu, fv, v0, u0):
+
     X = np.array(X)
     Y = np.array(Y)
+
     u = ((fu * H[0] + u0 * H[4]) * X + (fu * H[1] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
     v = ((fv * H[2] + v0 * H[4]) * X + (fv * H[3] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (H[4] * X + H[5] * Y + H[8])
+
+    # u = ((fu * H[0] + u0 * H[2]) * X + (fu * H[3] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (H[2] * X + H[5] * Y + H[8])
+    # v = ((fv * H[1] + v0 * H[2]) * X + (fv * H[4] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (H[2] * X + H[5] * Y + H[8])
+
     error = np.sum((A * u + B * v - 1)**2)
     return error
 
 
 def compute_error2(H, A, B, X, Y, fu, fv, v0, u0):
+
     X = np.array(X)
     Y = np.array(Y)
+
     u = ((fu * H[0] + u0 * H[4]) * X + (fu * H[1] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (
                 H[4] * X + H[5] * Y + H[8])
     v = ((fv * H[2] + v0 * H[4]) * X + (fv * H[3] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (
                 H[4] * X + H[5] * Y + H[8])
+
+    # u = ((fu * H[0] + u0 * H[2]) * X + (fu * H[3] + u0 * H[5]) * Y + fu * H[6] + u0 * H[8]) / (H[2] * X + H[5] * Y + H[8])
+    # v = ((fv * H[1] + v0 * H[2]) * X + (fv * H[4] + v0 * H[5]) * Y + fv * H[7] + v0 * H[8]) / (H[2] * X + H[5] * Y + H[8])
 
     A = np.array(A)  # Convert A to a NumPy array
     B = np.array(B)  # Convert B to a NumPy array
@@ -69,7 +85,8 @@ def Hoptimizationlsqnonlin(H0, parameters, fu, fv, v0, u0):
     A, B, X, Y = parameters[:, 0], parameters[:, 1], parameters[:, 2], parameters[:, 3]
     optimization_function = lambda H: compute_error2(H, A, B, X, Y, fu, fv, v0, u0)
     options = {'xtol': 1e-6, 'ftol': 1e-6, 'maxfev': 1000}
-    H = least_squares(optimization_function, H0, method='trf', xtol=options['xtol'], ftol=options['ftol'], max_nfev=options['maxfev']).x
+    #H = least_squares(optimization_function, H0, method='trf', xtol=options['xtol'], ftol=options['ftol'], max_nfev=options['maxfev']).x
+    H = minimize(optimization_function, H0).x
     return H
 
 def calculate_coefficients(u0, v0, u1, v1):
@@ -81,7 +98,54 @@ def calculate_coefficients(u0, v0, u1, v1):
 
     return A, B
 
+def transformMixed(H, x):
 
+    H = H.reshape(3,3)
+
+    w,t = H[:,0:2], H[:, 2]
+
+    if x.ndim> 1:
+        U = np.matmul(w, x) + np.tile(np.expand_dims(t, 1), (1, x.shape[1]))
+    else:
+        U = np.matmul(w, x) + t
+
+
+    return U
+
+def errorBelongLine(H, x, A, B):
+
+    U = transformMixed(H, x)
+
+    u = U[0]
+    v = U[1]
+
+    error = np.sum((A * u + B * v - 1)**2)
+    return error
+
+
+def errorMinimizeDist(H, x, A, B):
+
+    U = transformMixed(H, x)
+
+    u = U[0]
+    v = U[1]
+
+    error = np.sum(np.abs(A * u + B * v - 1)) / math.sqrt(
+        np.sum(A ** 2 + B ** 2))  # Use np.abs() for element-wise absolute value
+
+    return error
+
+
+def optimize(H0, A, B, x, error_function):
+    optimization_function = lambda H: error_function(H, x, A, B)
+
+    H0 = H0.reshape(9)
+    result = minimize(optimization_function, H0, method='Nelder-Mead')
+
+    optimized_H = result.x
+    optimized_error = result.fun
+
+    return optimized_H, optimized_error
 
 if __name__ == '__main__':
 
@@ -93,7 +157,7 @@ if __name__ == '__main__':
         camera_calib = pickle.load(file)
 
     # Specify the path of the calibration data
-    file_path = "cameraLaser_points.pkl"
+    file_path = "cameraLaser_points_100.pkl"
 
     # Open the file in binary read mode
     with open(file_path, 'rb') as file:
@@ -143,13 +207,91 @@ if __name__ == '__main__':
             print("You have not enough data for side {}, skipping".format(side))
             continue
 
+        # H0 = compute_H(parameters, fu, fv, u0, v0)
+        #
+        # A, B, x = parameters[:, 0], parameters[:, 1], parameters[:, 2:].T
+        # H, err = optimize(H0, A, B, x, errorMinimizeDist)
+        #
+        # print(H)
+        #
+        # avg_error = 0
+        # cont = 0
+        # for point in points:
+        #
+        #     for tuple in point:
+        #         laser_point, board_points = tuple
+        #
+        #         U = transformMixed(H, laser_point)
+        #         U = U[0]
+        #
+        #         # print("**** U {} V {}".format(u,v))
+        #         for j, point in enumerate(board_points, 1):
+        #             u, v = point
+        #             # print("    u {} v {}".format(u,v))
+        #
+        #             avg_error += (U - u) ** 2
+        #             cont += 1
+        #
+        # avg_error = np.sqrt(avg_error) / cont
+        # print("AVG ERROR: {}".format(avg_error))
+        #
+        #
+        # H, err = optimize(H, A, B, x, errorBelongLine)
+        # print(H)
+        #
+        # avg_error = 0
+        # cont = 0
+        # for point in points:
+        #
+        #     for tuple in point:
+        #         laser_point, board_points = tuple
+        #
+        #         U = transformMixed(H, laser_point)
+        #         U = U[0]
+        #
+        #         # print("**** U {} V {}".format(u,v))
+        #         for j, point in enumerate(board_points, 1):
+        #             u, v = point
+        #             # print("    u {} v {}".format(u,v))
+        #
+        #             avg_error += (U - u) ** 2
+        #             cont += 1
+        #
+        # avg_error = np.sqrt(avg_error) / cont
+        # print("AVG ERROR: {}".format(avg_error))
+
 
         H = compute_H(parameters, fu, fv, u0, v0)
         #print(H)
-        H1 = optimizeH(H, parameters, fu, fv, u0, v0)
-        #print(H1)
+        H1 = Hoptimizationlsqnonlin(H, parameters, fu, fv, u0, v0)
 
-        H2 = Hoptimizationlsqnonlin(H1, parameters, fu, fv, u0, v0)
+        print("H1:")
+        print(H1)
+
+        side_info = (H1, fu, fv, v0, u0)
+
+        avg_error = 0
+        cont = 0
+        for point in points:
+
+            for tuple in point:
+                laser_point, board_points = tuple
+
+                U, V = convert_robotF2imageF(laser_point[0], laser_point[1], side_info)
+
+                # print("**** U {} V {}".format(u,v))
+                for j, point in enumerate(board_points, 1):
+                    u, v = point
+                    # print("    u {} v {}".format(u,v))
+
+                    avg_error += (U - u) ** 2
+                    cont += 1
+
+        avg_error = np.sqrt(avg_error) / cont
+        print("AVG ERROR: {}".format(avg_error))
+
+        H2 = optimizeH(H1, parameters, fu, fv, u0, v0)
+        print("H2:")
         print(H2)
 
         side_info = (H2, fu, fv, v0, u0)

@@ -13,20 +13,20 @@ from cube_projection import CubeProjection
 from PIL import Image
 from tqdm import tqdm
 
-def map_bounding_box_to_side(bounding_box):
+def map_bounding_box_to_side(bounding_box, scale=1):
     u1, y1, u2, v2 = bounding_box
 
-    if (u1 >= 0 and u2 < 240) or (u1 >= 1720 and u2 < 1960):
-        if 240 <= v2 < 720:
+    if (u1 >= 0 and u2 < scale*240) or (u1 >= scale*1720 and u2 < scale*1960):
+        if scale*240 <= v2 < scale*720:
             return (0, "back")
-    elif u1 >= 240 and u2 < 720:
-        if 240 <= v2 < 720:
+    elif u1 >= scale*240 and u2 < scale*720:
+        if scale*240 <= v2 < scale*720:
             return (1, "left")
-    elif u1 >= 720 and u2 < 1200:
-        if 240 <= v2 <720:
+    elif u1 >= scale*720 and u2 < scale*1200:
+        if scale*240 <= v2 <scale*720:
             return (2, "front")
-    elif u1 >= 1200 and u2 < 1720:
-        if 240 <= v2 < 720:
+    elif u1 >= scale*1200 and u2 < scale*1720:
+        if scale*240 <= v2 < scale*720:
             return (3, "right")
     return None  # Bounding box doesn't fit any side
 
@@ -46,7 +46,7 @@ def main():
         else:
             print(f"Folder '{side}' already exists.")
 
-    model_state_dict = torch.load("one_shot_object_detector.pth")
+    model_state_dict = torch.load("one_shot_object_detectorUHD.pth")
 
     # Create an instance of the model
     model = fasterrcnn_resnet50_fpn(pretrained=False)
@@ -62,7 +62,7 @@ def main():
 
     #PERFORM INFERENCE
     #Detect board with the trained model
-    folder_path =  "images"
+    folder_path =  "images_UHD2"
     image_paths = [os.path.join(folder_path, filename) for filename in os.listdir(folder_path) if filename.endswith(('.jpg', '.png', '.jpeg'))]
 
     for i,image_path in tqdm(enumerate(image_paths)):
@@ -104,7 +104,7 @@ def main():
         # plt.imshow(cropped_image)
         # plt.show()
 
-        side = map_bounding_box_to_side(max_score_box)
+        side = map_bounding_box_to_side(max_score_box, scale = 2)
 
         if side is not None:
             cube = CubeProjection(Image.fromarray(image), ".")
