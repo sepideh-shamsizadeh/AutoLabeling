@@ -65,8 +65,8 @@ loss_association_threshold = 2  # Number of consecutive frames without associati
 removed_objects_p = []
 removed_objects_id = []
 removed_objects_f = []
-filters = []
-missed_filters = []
+filters = {}
+missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
