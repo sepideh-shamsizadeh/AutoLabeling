@@ -31,8 +31,7 @@ def measurement_fn(x):
     return x[:2]
 
 
-def add_loss_of_id(filters, missed_id):
-    missed_filters = {}
+def add_loss_of_id(filters, missed_id, missed_filters):
     while len(missed_id) > 0:
         mid = missed_id[0]
         missed_id.remove(mid)

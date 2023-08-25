@@ -68,6 +68,7 @@ removed_objects_p = []
 removed_objects_id = []
 removed_objects_f = []
 filters = {}
+first_gallery = []
 missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
@@ -168,6 +169,6 @@ for i in range(0, len(dr_spaam)):
                     dsides['left']['positions'] = pose
         measurements = assign_pose2panoramic(pil_image, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
-        filters, missed_filters, current_id = tracking(
-            measurements, filters, frame_num, missed_filters, current_id
+        filters, missed_filters, current_id, first_gallery = tracking(
+            measurements, filters, frame_num, missed_filters, current_id, first_gallery
         )

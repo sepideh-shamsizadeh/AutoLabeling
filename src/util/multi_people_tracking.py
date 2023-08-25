@@ -55,7 +55,6 @@ def get_neighbors(positions, filter_i, id_g, measurements):
     if len(positions) > 0:
         neighbors = global_nearest_neighbor(positions, [filter_i.x[:2]], covariance_matrix, id_g)
     if len(neighbors) > 0:
-        print(neighbors, id_g, measurements.keys())
         for i, neighbor in enumerate(neighbors):
             if str(neighbor) in measurements:
                 n += 1
@@ -95,7 +94,6 @@ def find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g):
         gallery = []
         for neighbor in neighbors:
             gallery.append(measurements[str(neighbor)]['visual_features'][0])
-        print(neighbors, id_g, measurements.keys())
         sim, indices = calculate_similarity_faiss(filter_i.visual_features, gallery)
         for index in indices:
             ids.append(neighbors[index])
@@ -105,20 +103,20 @@ def find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g):
     return found_id
 
 
-def update_filters(filters, measurements, id_rem, attached, positions, galleries, id_g, missed_flag):
+def check_neighbours(filters, measurements, id_rem, attached, positions, galleries, id_g):
     assigned_filters = []
     missed_id = []
-    if not missed_flag:
-        for filter_id, filter_i in filters.items():
-            print('filter id' + str(filter_i.object_id))
-            id_f = find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g)
-            print('idf' + str(id_f))
-            if id_f > -1:
-                attached.append(id_f)
-                id_rem.remove(id_f)
-                filter_i.update(measurements[str(id_f)]['position'][0])
-                filter_i.visual_features = measurements[str(id_f)]['visual_features'][0]
-                assigned_filters.append(filter_id)
+    for filter_id, filter_i in filters.items():
+        id_f = find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g)
+        if id_f > -1:
+            attached.append(id_f)
+            id_rem.remove(id_f)
+            filter_i.update(measurements[str(id_f)]['position'][0])
+            filter_i.visual_features = measurements[str(id_f)]['visual_features'][0]
+            assigned_filters.append(filter_id)
+    return filters, missed_id, id_rem, id_g, attached, assigned_filters
+
+def check_all_others(filters, measurements, id_rem, attached, assigned_filters, missed_id, galleries, id_g):
     id_filters = []
     found_ids = []
     matrix_sim = []
@@ -137,14 +135,9 @@ def update_filters(filters, measurements, id_rem, attached, positions, galleries
                 if filter_id not in missed_id:
                     missed_id.append(filter_id)
     matrix = np.array(matrix_sim)
-    print('iiiiiiiiiiiiiiiiiiiiiiiiiii')
-    print(id_filters)
-    print(matrix)
     if len(id_filters) > 0:
         for id in id_rem:
-            print('id' + str(id))
             max_row_index = np.argmax(matrix[:, id_rem.index(id)])
-            print(max_row_index)
             if id_filters[max_row_index] not in assigned_filters and matrix[max_row_index, id_rem.index(id)] > 0:
                 attached.append(id)
                 id_rem.remove(id)
@@ -165,23 +158,62 @@ def update_filters(filters, measurements, id_rem, attached, positions, galleries
             else:
                 if filter_id not in missed_id:
                     missed_id.append(filter_id)
-    return filters, missed_id, id_rem, id_g, attached
+    return filters, missed_id, id_rem, id_g, attached, assigned_filters
+
+def find_missed_id(filters, missed_filters, measurements,
+                   attached, id_rem, current_id, first_gallery, assigned_filters):
+    id_d = missed_filters.keys()
+    id_missed = [int(key) for key in id_d]
+    missed_gallery = []
+    print(id_missed)
+    id_g = list(range(len(first_gallery)))
+    for i in id_missed:
+        missed_gallery.append(missed_filters[i].visual_features)
+        print(i, len(missed_gallery))
+    for measure_id, measure in measurements.items():
+        if int(measure_id) in id_rem:
+            print(measure_id)
+            sim, indices = calculate_similarity_faiss(measure['visual_features'][0], first_gallery)
+            ids = [id_g[index] for index in indices if index > -1]
+            id = get_id(ids, attached, id_g)
+            print('fffff'+str(id))
+            if id in id_missed:
+                filter_i = creat_new_filter(measure, id)
+                filters[id] = filter_i
+                missed_filters.pop(id)
+                print('find id' + str(id))
+                attached.append(id)
+                id_rem.remove(id)
+            else:
+                if len(missed_gallery) > 0:
+                    sim, indices = calculate_similarity_faiss(measure['visual_features'][0], missed_gallery)
+                    ids = [id_missed[index] for index in indices if index > -1]
+                    id = get_id(ids, attached, id_g)
+                    if id in id_missed:
+                        filter_i = creat_new_filter(measure, id)
+                        filters[id] = filter_i
+                        missed_filters.pop(id)
+                        print('find id' + str(id))
+                        attached.append(id)
+                        id_rem.remove(id)
+                else:
+                    filter_i = creat_new_filter(measure, current_id)
+                    filters[current_id] = filter_i
+                    current_id += 1
+    return filters, missed_filters, attached, assigned_filters
 
 
-def creat_new_filter_id(measurements, missed_filters, id_object, current_id):
-    filter_i, id_obj, current_id = 0
-    return filter_i, id_obj, current_id
+def tracking(measurements, filters, frame_num, missed_filters, current_id, first_gallery):
 
-
-def tracking(measurements, filters, frame_num, missed_filters, current_id):
-    print('frame num', str(frame_num))
-    print(measurements)
     if frame_num == 0:
+        first_gallery = []
         current_id = 0
         for i in range(0, len(measurements)):
             filter_i = creat_new_filter(measurements[str(i)], i)
+            first_gallery.append(measurements[str(i)]['visual_features'][0])
             filters[current_id] = filter_i
             current_id += 1
+
     else:
         id_d = measurements.keys()
         id_g = [int(key) for key in id_d]
@@ -192,20 +224,25 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id):
         for i in id_g:
             positions.append(measurements[str(i)]['position'][0])
             galleries.append(measurements[str(i)]['visual_features'][0])
-        filters, missed_ids, id_rem, id_g, attached = update_filters(filters, measurements, id_rem, attached,
-                                                                         positions, galleries, id_g, False)
-        filters, missed_filters = add_loss_of_id(filters, missed_ids)
+
+        filters, missed_ids, id_rem, id_g, attached, assigned_filters = check_neighbours(
+            filters, measurements, id_rem, attached, positions, galleries, id_g
+        )
+
+        filters, missed_ids, id_rem, id_g, attached, assigned_filters = check_all_others(
+            filters, measurements, id_rem, attached, assigned_filters, missed_ids, galleries, id_g
+        )
+
+        filters, missed_filters = add_loss_of_id(filters, missed_ids, missed_filters)
+
         if len(id_rem) > 0:
-            missed_filters, _, id_rem, id_g, attached = update_filters(missed_filters, measurements, id_rem,
-                                                                       attached, positions, galleries, id_g, True)
-        if len(id_rem) > 0:
-            for id in id_rem:
-                filter_i = creat_new_filter(measurements[str(id)], current_id)
-                filters[current_id] = filter_i
-                print('new id' + str(current_id))
-                current_id += 1
+            filters, missed_filters, attached, assigned_filters = find_missed_id(
+                filters, missed_filters, measurements,
+                attached, id_rem, current_id, first_gallery, assigned_filters
+            )
 
     print('frame number:' + str(frame_num))
+
     pp_data = []
     for filter_id, filter_i in filters.items():
         print('ID:' + str(filter_id))
@@ -214,6 +251,7 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id):
         pp = {'id ' + str(filter_i.object_id): position}
         print(pp)
         pp_data.append(pp)
+
     frame = 'frame ' + str(frame_num)
     yaml_data = {frame: pp_data}
     output_file = 'tracks.yaml'
@@ -221,4 +259,4 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id):
     with open(output_file, 'a') as file:
         yaml.dump(yaml_data, file)
 
-    return filters, missed_filters, current_id
+    return filters, missed_filters, current_id, first_gallery

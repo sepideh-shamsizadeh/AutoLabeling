@@ -131,22 +131,25 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 if flag_concat:
                     bnnd = sorted_people.pop()
                     img = concatenate_person(bnnd, person, image)
-                    people_detected = assign_pose2person(
-                        people_detected, j, person, img, pos, model1, flag_concat
-                    )
+                    if len(pos) > 0:
+                        people_detected = assign_pose2person(
+                            people_detected, j, person, image, pos, model1, flag_concat
+                        )
                     j += 1
                 else:
-                    people_detected = assign_pose2person(
-                        people_detected, j, person, image, pos, model1, flag_concat
-                    )
-                    sides_detected['back']['positions'].pop(0)
-                    sides_detected['back']['bounding_boxes'].pop(0)
+                    if len(pos) > 0:
+                        people_detected = assign_pose2person(
+                            people_detected, j, person, image, pos, model1, flag_concat
+                        )
+                        sides_detected['back']['positions'].pop(0)
+                        sides_detected['back']['bounding_boxes'].pop(0)
                     j += 1
             elif 240 < person[2] < 720:
                 sides_detected, pos = handle_borders('back', 'left', sides_detected)
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
+                if len(pos) > 0:
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
                 j += 1
         elif 240 <= person[0] < 720:
             if 240 <= person[2] < 720:
@@ -161,9 +164,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif 720 <= person[2] < 1200:
                 sides_detected, pos = handle_borders('left', 'front', sides_detected)
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
+                if len(pos) > 0:
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
                 j += 1
         elif 720 <= person[0] < 1200:
             if 720 <= person[2] < 1200:
@@ -179,9 +183,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif 1200 <= person[2] < 1680:
                 sides_detected, pos = handle_borders('front', 'right', sides_detected)
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
+                if len(pos) > 0:
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
                 j += 1
         elif 1200 <= person[0] < 1680:
             if 1200 <= person[2] < 1680:
@@ -197,9 +202,10 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif 1680 <= person[2] < 1920:
                 sides_detected, pos = handle_borders('right', 'back', sides_detected)
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
+                if len(pos) > 0:
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
                 j += 1
         elif 1680 <= person[0] <= 1920:
             if len(sides_detected['back']['bounding_boxes']) > 0:
