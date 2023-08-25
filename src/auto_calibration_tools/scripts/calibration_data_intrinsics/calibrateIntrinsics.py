@@ -106,7 +106,7 @@ for side in sides:
     results[side] = {"K":mtx, "dist":dist, "rvecs":rvecs, "tvecs":tvecs, "rpj_error": mean_error / len(objpoints) }
 
 # Specify the file path where you want to save the dictionary
-file_path = "intrinsics.pkl"
+file_path = "intrinsicsUHD.pkl"
 
 # save dictionary to person_data.pkl file
 with open(file_path, 'wb') as fp:

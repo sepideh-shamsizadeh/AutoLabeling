@@ -962,7 +962,7 @@ if __name__ == "__main__":
 
 
 # Specify the file path where you want to save the dictionary
-file_path = "cameraLaser_points.pkl"
+file_path = "cameraLaser_pointsUHD.pkl"
 
 # save dictionary to person_data.pkl file
 with open(file_path, 'wb') as fp:

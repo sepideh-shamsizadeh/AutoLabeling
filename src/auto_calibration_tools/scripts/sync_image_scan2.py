@@ -17,7 +17,7 @@ class DataSaverNode:
         # Retrieve parameters
         SAVE_ROOT = rospy.get_param("~SAVE_ROOT", "./calibration_data_extrinsics/images")
         num_images_to_save = rospy.get_param("~num_images_to_save", 100)
-        save_interval = rospy.get_param("~save_interval", 3)  # Adjust the interval as needed (in seconds)
+        save_interval = rospy.get_param("~save_interval", 1)  # Adjust the interval as needed (in seconds)
 
         if not os.path.exists(SAVE_ROOT):
             os.makedirs(SAVE_ROOT)

@@ -55,5 +55,16 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/top
 src/util/temporary.py
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test/
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor/
+src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_points_100.pkl
+src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_points_backup.pkl
+src/auto_calibration_tools/scripts/camera_laser_calibration/images_UHD/
+src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test200/
+src/auto_calibration_tools/scripts/camera_laser_calibration/images_prova/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/backgrounds_UHD/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_FHD/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_UHD/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_UHD2/
+src/auto_calibration_tools/scripts/calibration_data_intrinsics/intrinsicsUHD.pkl
+
 
 

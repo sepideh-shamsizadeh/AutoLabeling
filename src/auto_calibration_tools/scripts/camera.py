@@ -37,6 +37,10 @@ pub = rospy.Publisher('/theta_camera/image_raw', Image, queue_size=5)
 # /dev/videoID needed
 cap = cv2.VideoCapture(5)
 
+# Set the resolution
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1920)
+
 # Check if camera was opened correctly
 if not (cap.isOpened()):
     print("Could not open video device")
@@ -44,13 +48,13 @@ if not (cap.isOpened()):
     #print("Auto fps: ", fps)
     rate = rospy.Rate(fps)
 
-# Set the resolution
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
+
 
 # Capture frame-by-frame
 while (True):
     ret, frame = cap.read()
+
+    #print(frame.shape)
 
     # Display the resulting frame
 
