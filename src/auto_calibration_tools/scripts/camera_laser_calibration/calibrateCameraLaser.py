@@ -157,7 +157,7 @@ if __name__ == '__main__':
         camera_calib = pickle.load(file)
 
     # Specify the path of the calibration data
-    file_path = "cameraLaser_points_100.pkl"
+    file_path = "cameraLaser_points.pkl"
 
     # Open the file in binary read mode
     with open(file_path, 'rb') as file:
@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
         H = compute_H(parameters, fu, fv, u0, v0)
         #print(H)
-        H1 = Hoptimizationlsqnonlin(H, parameters, fu, fv, u0, v0)
+        H1 = optimizeH(H, parameters, fu, fv, u0, v0)
 
         print("H1:")
         print(H1)
@@ -290,7 +290,7 @@ if __name__ == '__main__':
         avg_error = np.sqrt(avg_error) / cont
         print("AVG ERROR: {}".format(avg_error))
 
-        H2 = optimizeH(H1, parameters, fu, fv, u0, v0)
+        H2 = Hoptimizationlsqnonlin(H1, parameters, fu, fv, u0, v0)
         print("H2:")
         print(H2)
 
