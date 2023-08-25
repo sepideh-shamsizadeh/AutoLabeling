@@ -105,19 +105,20 @@ def find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g):
     return found_id
 
 
-def update_filters(filters, measurements, id_rem, attached, positions, galleries, id_g, flag_new_id):
+def update_filters(filters, measurements, id_rem, attached, positions, galleries, id_g, missed_flag):
     assigned_filters = []
-    missed_filters = {}
-    for filter_id, filter_i in filters.items():
-        print('filter id' + str(filter_i.object_id))
-        id_f = find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g)
-        print('idf' + str(id_f))
-        if id_f > -1:
-            attached.append(id_f)
-            id_rem.remove(id_f)
-            filter_i.update(measurements[str(id_f)]['position'][0])
-            filter_i.visual_features = measurements[str(id_f)]['visual_features'][0]
-            assigned_filters.append(filter_id)
+    missed_id = []
+    if not missed_flag:
+        for filter_id, filter_i in filters.items():
+            print('filter id' + str(filter_i.object_id))
+            id_f = find_tracker_newF(filter_i, positions, measurements, dt, attached, id_g)
+            print('idf' + str(id_f))
+            if id_f > -1:
+                attached.append(id_f)
+                id_rem.remove(id_f)
+                filter_i.update(measurements[str(id_f)]['position'][0])
+                filter_i.visual_features = measurements[str(id_f)]['visual_features'][0]
+                assigned_filters.append(filter_id)
     id_filters = []
     found_ids = []
     matrix_sim = []
@@ -133,19 +134,23 @@ def update_filters(filters, measurements, id_rem, attached, positions, galleries
                 id_filters.append(filter_i.object_id)
                 found_ids.append(found_id)
             else:
-                if not flag_new_id:
-                    print('filter with id' + str(filter_i.object_id) + 'missed')
-                    missed_filters[filter_id] = filter_i
-                    filters.pop(filter_id)
+                if filter_id not in missed_id:
+                    missed_id.append(filter_id)
     matrix = np.array(matrix_sim)
-    for id in id_rem:
-        max_row_index = np.argmax(matrix[:, id_rem.index(id)])
-        if found_ids[max_row_index] not in assigned_filters and matrix[max_row_index, id] > 0:
-            attached.append(id)
-            id_rem.remove(id)
-            filters[found_ids[max_row_index]].update(measurements[str(id)]['position'][0])
-            filters[found_ids[max_row_index]].visual_features = measurements[str(id)]['visual_features'][0]
-            assigned_filters.append(found_ids[max_row_index])
+    print('iiiiiiiiiiiiiiiiiiiiiiiiiii')
+    print(id_filters)
+    print(matrix)
+    if len(id_filters) > 0:
+        for id in id_rem:
+            print('id' + str(id))
+            max_row_index = np.argmax(matrix[:, id_rem.index(id)])
+            print(max_row_index)
+            if id_filters[max_row_index] not in assigned_filters and matrix[max_row_index, id_rem.index(id)] > 0:
+                attached.append(id)
+                id_rem.remove(id)
+                filters[id_filters[max_row_index]].update(measurements[str(id)]['position'][0])
+                filters[id_filters[max_row_index]].visual_features = measurements[str(id)]['visual_features'][0]
+                assigned_filters.append(id_filters[max_row_index])
     for filter_id, filter_i in filters.items():
         if filter_id not in assigned_filters:
             sim, indices = calculate_similarity_faiss(filter_i.visual_features, galleries)
@@ -158,14 +163,13 @@ def update_filters(filters, measurements, id_rem, attached, positions, galleries
                 filter_i.visual_features = measurements[str(id_f)]['visual_features'][0]
                 assigned_filters.append(filter_id)
             else:
-                if not flag_new_id:
-                    print('filter with id' + str(filter_id) + 'missed')
-                    missed_filters[filter_id] = filter_i
-                    filters.pop(filter_id)
-    return filters, missed_filters, id_rem, id_g, attached
+                if filter_id not in missed_id:
+                    missed_id.append(filter_id)
+    return filters, missed_id, id_rem, id_g, attached
+
 
 def creat_new_filter_id(measurements, missed_filters, id_object, current_id):
-    filter_i, id_obj, current_id =0
+    filter_i, id_obj, current_id = 0
     return filter_i, id_obj, current_id
 
 
@@ -176,7 +180,7 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id):
         current_id = 0
         for i in range(0, len(measurements)):
             filter_i = creat_new_filter(measurements[str(i)], i)
-            filters[i] = filter_i
+            filters[current_id] = filter_i
             current_id += 1
     else:
         id_d = measurements.keys()
@@ -188,9 +192,12 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id):
         for i in id_g:
             positions.append(measurements[str(i)]['position'][0])
             galleries.append(measurements[str(i)]['visual_features'][0])
-        filters, missed_filters, id_rem, id_g, attached = update_filters(filters, measurements, id_rem, attached, positions, galleries, id_g, False)
+        filters, missed_ids, id_rem, id_g, attached = update_filters(filters, measurements, id_rem, attached,
+                                                                         positions, galleries, id_g, False)
+        filters, missed_filters = add_loss_of_id(filters, missed_ids)
         if len(id_rem) > 0:
-            filters, missed_filters, id_rem, id_g, attached = update_filters(missed_filters, measurements, id_rem, attached, positions, galleries, id_g, True)
+            missed_filters, _, id_rem, id_g, attached = update_filters(missed_filters, measurements, id_rem,
+                                                                       attached, positions, galleries, id_g, True)
         if len(id_rem) > 0:
             for id in id_rem:
                 filter_i = creat_new_filter(measurements[str(id)], current_id)

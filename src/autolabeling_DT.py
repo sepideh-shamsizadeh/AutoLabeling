@@ -22,8 +22,10 @@ def counter():
 FACE_NAMES = ['back', 'front', 'left', 'right']
 back_info, right_info, left_info, front_info = get_info()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = ''  # This will make sure no GPU is being used
-device = "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
 batch_size = 8
 gamma = 0.7
 seed = 42
@@ -43,7 +45,7 @@ print(feature_model.eval())
 counter_gen = counter()
 
 scan = []
-with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/scan.csv', 'r') as file:
+with open('../data/scan.csv', 'r') as file:
     # Create a CSV reader object
     reader = csv.reader(file)
     # Read each row of the CSV file
@@ -53,7 +55,7 @@ with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/scan.csv', 'r') as fi
         scan.append(ranges)
 
 dr_spaam = []
-with open('/home/sepid/workspace/Thesis/GuidingRobot/data2/drspaam_data2.csv', 'r') as file:
+with open('../data/drspaam_data2.csv', 'r') as file:
     # Create a CSV reader object
     reader = csv.reader(file)
     # Read each row of the CSV file
@@ -70,8 +72,8 @@ missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(21, 100):
-    path = '/home/sepid/workspace/Thesis/GuidingRobot/data2/image_' + str(i) + '.jpg'
+for i in range(0, len(dr_spaam)):
+    path = '../data/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
         'bounding_boxes': [],
@@ -117,7 +119,6 @@ for i in range(21, 100):
             if face in FACE_NAMES:
                 cv_image = np.array(side_img)
                 detected, objects_pose = detect_people.detect_person(cv_image, detection_model)
-                print(face)
                 sorted_detected = sorted(detected, key=lambda x: x[0])
                 dsides[face]['bounding_boxes'] = sorted_detected
                 if face == 'back':
@@ -132,7 +133,6 @@ for i in range(21, 100):
                             people.append((2.5, 0))
                             pose.append((2.5, 0))
                     dsides[face]['positions'] = pose
-                    print('-------------------')
                 elif face == 'front':
                     pose = []
                     XY = selected_point(front_xy, front, front_info, face, sorted_detected, cv_image)
@@ -144,7 +144,6 @@ for i in range(21, 100):
                             people.append((-2.5, 0))
                             pose.append((-2.5, 0))
                     dsides['front']['positions'] = pose
-                    print('-------------------')
                 elif face == 'right':
                     pose = []
                     XY = selected_point(right_xy, right, right_info, face, sorted_detected, cv_image)
@@ -156,7 +155,6 @@ for i in range(21, 100):
                             people.append((0, 2.5))
                             pose.append((0, 2.5))
                     dsides['right']['positions'] = pose
-                    print('-------------------')
                 elif face == 'left':
                     pose = []
                     XY = selected_point(left_xy, left, left_info, face, sorted_detected, cv_image)
@@ -168,7 +166,6 @@ for i in range(21, 100):
                             people.append((0, -2.5))
                             pose.append((0, -2.5))
                     dsides['left']['positions'] = pose
-                    print('-------------------')
         measurements = assign_pose2panoramic(pil_image, detected_org, dsides, feature_model)
         frame_num = next(counter_gen)
         filters, missed_filters, current_id = tracking(

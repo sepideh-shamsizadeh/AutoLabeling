@@ -44,11 +44,11 @@ def detect_person(img0, model):
     poses = []
     obejcts_poses = []
     imgsz = 640
-    conf_thres = 0.7
+    conf_thres = 0.75
     iou_thres = 0.45
     device = select_device('')
     stride = int(model.stride.max())  # model stride
-    half = device.type != 'cpu'
+    half = device == 'cuda'  # Set 'half' to True if using GPU, False if using CPU
     imgsz = check_img_size(imgsz, s=stride)  # check img_size
     img = letterbox(img0, imgsz, stride=stride)[0]
 
@@ -119,7 +119,7 @@ def detect_person(img0, model):
 
 
 if __name__ == '__main__':
-    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_13.jpg')  # BGR
+    img0 = cv2.imread('/home/sepid/workspace/Thesis/GuidingRobot/data2/image_43.jpg')  # BGR
     # cv2.imshow("image", img0)
     # cv2.waitKey(0)
     model = load_model()

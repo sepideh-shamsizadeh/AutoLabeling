@@ -55,6 +55,7 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/top
 src/util/temporary.py
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test/
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor/
+data/*
 src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_points_100.pkl
 src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_points_backup.pkl
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_UHD/
@@ -69,5 +70,4 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/backgrounds_UHD/side
 src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_pointsUHD.pkl
 
 
-
-
+.ignore.swp
