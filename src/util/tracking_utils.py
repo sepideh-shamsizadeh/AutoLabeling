@@ -31,9 +31,12 @@ def measurement_fn(x):
     return x[:2]
 
 
-def handle_loss_of_id(filters, remove_filters):
-    # Remove the filter from the list of filters
-    for f in remove_filters:
-        # print(f.object_id)
-        filters.remove(f)
-    return filters
+def add_loss_of_id(filters, missed_id):
+    missed_filters = {}
+    while len(missed_id) > 0:
+        mid = missed_id[0]
+        missed_id.remove(mid)
+        print('filter with id' + str(mid) + 'missed')
+        missed_filters[mid] = filters[mid]
+        filters.pop(mid)
+    return filters, missed_filters

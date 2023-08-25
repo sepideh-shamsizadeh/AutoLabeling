@@ -25,7 +25,7 @@ def concatenate_person(bound_left, bound_right, img):
     # Paste the parts onto the concatenated image
     concatenated_image.paste(part1, (0, 0))
     concatenated_image.paste(part2, (width_part1, 0))
-    concatenated_image.show()
+    # concatenated_image.show()
 
     return concatenated_image
 
@@ -110,15 +110,10 @@ def from_cube2panoramic(face, bnd):
 
 
 def assign_pose2panoramic(image, org_detected, sides_detected, model1):
-    galleries = []
-    print(org_detected)
-    print(sides_detected)
     people_detected = {}
     sorted_people = sorted(org_detected, key=lambda
         x: x[0])
-    print(sorted_people)
     j = 0
-    sorted_positions = []
     while j < len(sorted_people):
         flag_concat = False
         person = sorted_people[j]
@@ -155,13 +150,14 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
         elif 240 <= person[0] < 720:
             if 240 <= person[2] < 720:
-                bnd = sides_detected['left']['bounding_boxes'][0]
-                pos = sides_detected['left']['positions'][0]
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
-                sides_detected['left']['positions'].pop(0)
-                sides_detected['left']['bounding_boxes'].pop(0)
+                if len(sides_detected['left']['bounding_boxes']) > 0:
+                    bnd = sides_detected['left']['bounding_boxes'][0]
+                    pos = sides_detected['left']['positions'][0]
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
+                    sides_detected['left']['positions'].pop(0)
+                    sides_detected['left']['bounding_boxes'].pop(0)
                 j += 1
             elif 720 <= person[2] < 1200:
                 sides_detected, pos = handle_borders('left', 'front', sides_detected)
@@ -171,14 +167,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
         elif 720 <= person[0] < 1200:
             if 720 <= person[2] < 1200:
-                bnd = sides_detected['front']['bounding_boxes'][0]
-                pos = sides_detected['front']['positions'][0]
+                if len(sides_detected['front']['bounding_boxes']) > 0:
+                    bnd = sides_detected['front']['bounding_boxes'][0]
+                    pos = sides_detected['front']['positions'][0]
 
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
-                sides_detected['front']['positions'].pop(0)
-                sides_detected['front']['bounding_boxes'].pop(0)
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
+                    sides_detected['front']['positions'].pop(0)
+                    sides_detected['front']['bounding_boxes'].pop(0)
                 j += 1
             elif 1200 <= person[2] < 1680:
                 sides_detected, pos = handle_borders('front', 'right', sides_detected)
@@ -188,14 +185,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
         elif 1200 <= person[0] < 1680:
             if 1200 <= person[2] < 1680:
-                bnd = sides_detected['right']['bounding_boxes'][0]
-                pos = sides_detected['right']['positions'][0]
+                if len(sides_detected['right']['bounding_boxes']) > 0:
+                    bnd = sides_detected['right']['bounding_boxes'][0]
+                    pos = sides_detected['right']['positions'][0]
 
-                people_detected = assign_pose2person(
-                    people_detected, j, person, image, pos, model1, flag_concat
-                )
-                sides_detected['right']['positions'].pop(0)
-                sides_detected['right']['bounding_boxes'].pop(0)
+                    people_detected = assign_pose2person(
+                        people_detected, j, person, image, pos, model1, flag_concat
+                    )
+                    sides_detected['right']['positions'].pop(0)
+                    sides_detected['right']['bounding_boxes'].pop(0)
                 j += 1
             elif 1680 <= person[2] < 1920:
                 sides_detected, pos = handle_borders('right', 'back', sides_detected)
@@ -204,12 +202,13 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 )
                 j += 1
         elif 1680 <= person[0] <= 1920:
-            bnd = sides_detected['back']['bounding_boxes'][0]
-            pos = sides_detected['back']['positions'][0]
-            people_detected = assign_pose2person(
-                people_detected, j, person, image, pos, model1, flag_concat
-            )
-            sides_detected['back']['positions'].pop(0)
-            sides_detected['back']['bounding_boxes'].pop(0)
+            if len(sides_detected['back']['bounding_boxes']) > 0:
+                bnd = sides_detected['back']['bounding_boxes'][0]
+                pos = sides_detected['back']['positions'][0]
+                people_detected = assign_pose2person(
+                    people_detected, j, person, image, pos, model1, flag_concat
+                )
+                sides_detected['back']['positions'].pop(0)
+                sides_detected['back']['bounding_boxes'].pop(0)
             j += 1
     return people_detected

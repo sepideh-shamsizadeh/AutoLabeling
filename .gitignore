@@ -55,5 +55,6 @@ src/auto_calibration_tools/scripts/camera_laser_calibration/top
 src/util/temporary.py
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor-test/
 src/auto_calibration_tools/scripts/camera_laser_calibration/images_outdoor/
+data/*
 
-
+.ignore.swp
