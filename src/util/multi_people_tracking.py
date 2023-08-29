@@ -11,7 +11,6 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id, first
             first_gallery.append(measurements[str(i)]['visual_features'][0])
             filters[current_id] = filter_i
             current_id += 1
-
     else:
         id_d = measurements.keys()
         id_g = [int(key) for key in id_d]
@@ -38,7 +37,6 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id, first
                 filters, missed_filters, measurements, galleries,
                 attached, id_rem, current_id, first_gallery, assigned_filters
             )
-
     print('frame number:' + str(frame_num))
 
     return filters, missed_filters, current_id, first_gallery

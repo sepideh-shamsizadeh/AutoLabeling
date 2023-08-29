@@ -219,46 +219,48 @@ def find_missed_id(filters, missed_filters, measurements, galleries,
     missed_gallery = []
     ids2remove1 = []
     ids2remove2 = []
-
-    id_g = list(range(len(first_gallery)))
-    for i in id_missed:
-        missed_gallery.append(missed_filters[i].visual_features)
-    for id in id_rem:
-        queries[id] = creat_new_filter(measurements[str(id)], id)
-    first_matrix = get_similarity_matrix(queries, first_gallery, id_rem, id_missed, id_g, assigned)
-    missed_matrix = get_similarity_matrix(queries, missed_gallery, id_rem, id_missed, id_missed, assigned)
-    if len(first_matrix) > 0 and len(missed_matrix) > 0:
-        while np.max(first_matrix) > 0.6 or np.max(missed_matrix) > 0.6:
-            if len(first_matrix.shape) == 1:
-                max_row1, max_col1 = 0
-            else:
-                max_index1 = np.argmax(first_matrix)
-                max_row1, max_col1 = np.unravel_index(max_index1, first_matrix.shape)
-            max_row2 = np.argmax(missed_matrix[:, max_col1])
-            if first_matrix[max_row1, max_col1] > missed_matrix[max_row2, max_col1]:
-                filter_i = creat_new_filter(measurements[str(id_rem[max_col1])], id_missed[max_row1])
-                filters[id_missed[max_row2]] = filter_i
-                first_matrix[max_row1, :] = 0
-                first_matrix[:, max_col1] = 0
-                missed_matrix[max_row1, :] = 0
-                missed_matrix[:, max_col1] = 0
-                assigned.append(id_rem[max_col1])
-                ids2remove1.append(id_rem[max_col1])
-                ids2remove1.append(id_missed[max_row1])
-            else:
-                filter_i = creat_new_filter(measurements[str(id_rem[max_col1])], id_missed[max_row2])
-                filters[id_missed[max_row2]] = filter_i
-                first_matrix[max_row2, :] = 0
-                first_matrix[:, max_col1] = 0
-                missed_matrix[max_row2, :] = 0
-                missed_matrix[:, max_col1] = 0
-                assigned.append(id_rem[max_col1])
-                ids2remove1.append(id_rem[max_col1])
-                ids2remove1.append(id_missed[max_row2])
-    for id1 in ids2remove1:
-        id_rem.remove(id1)
-    for id2 in ids2remove2:
-        id_missed.remove(id2)
+    if len(missed_filters) > 0:
+        id_g = list(range(len(first_gallery)))
+        for i in id_missed:
+            missed_gallery.append(missed_filters[i].visual_features)
+        for id in id_rem:
+            queries[id] = creat_new_filter(measurements[str(id)], id)
+        first_matrix = get_similarity_matrix(queries, first_gallery, id_rem, id_missed, id_g, assigned)
+        missed_matrix = get_similarity_matrix(queries, missed_gallery, id_rem, id_missed, id_missed, assigned)
+        if len(first_matrix) > 0 and len(missed_matrix) > 0:
+            while np.max(first_matrix) > 0.6 or np.max(missed_matrix) > 0.6:
+                if len(first_matrix.shape) == 1:
+                    max_row1, max_col1 = 0
+                else:
+                    max_index1 = np.argmax(first_matrix)
+                    max_row1, max_col1 = np.unravel_index(max_index1, first_matrix.shape)
+                max_row2 = np.argmax(missed_matrix[:, max_col1])
+                if first_matrix[max_row1, max_col1] > missed_matrix[max_row2, max_col1]:
+                    filter_i = creat_new_filter(measurements[str(id_rem[max_col1])], id_missed[max_row1])
+                    filters[id_missed[max_row2]] = filter_i
+                    first_matrix[max_row1, :] = 0
+                    first_matrix[:, max_col1] = 0
+                    missed_matrix[max_row1, :] = 0
+                    missed_matrix[:, max_col1] = 0
+                    assigned.append(id_rem[max_col1])
+                    ids2remove1.append(id_rem[max_col1])
+                    ids2remove2.append(id_missed[max_row1])
+                else:
+                    filter_i = creat_new_filter(measurements[str(id_rem[max_col1])], id_missed[max_row2])
+                    filters[id_missed[max_row2]] = filter_i
+                    first_matrix[max_row2, :] = 0
+                    first_matrix[:, max_col1] = 0
+                    missed_matrix[max_row2, :] = 0
+                    missed_matrix[:, max_col1] = 0
+                    assigned.append(id_rem[max_col1])
+                    ids2remove1.append(id_rem[max_col1])
+                    ids2remove2.append(id_missed[max_row2])
+        for id1 in ids2remove1:
+            id_rem.remove(id1)
+        for id2 in ids2remove2:
+            id_missed.remove(id2)
+            missed_filters.pop(id_missed[max_row2])
+            print('find id' + str(id2))
     for id in id_rem:
         filter_i = creat_new_filter(measurements[str(id)], current_id)
         filters[current_id] = filter_i
