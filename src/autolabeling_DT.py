@@ -193,7 +193,7 @@ for i in range(17, len(dr_spaam)):
             pp_data.append(pp)
             # Calculate label positiontextsize
             label_x = filter_i.bounding[0] + (filter_i.bounding[2] - filter_i.bounding[0]) // 2
-            label_y = filter_i.bounding[1] - 11  # Place above the bounding box
+            label_y = filter_i.bounding[1] - 24  # Place above the bounding box
 
             # Draw the label
             draw.text((label_x, label_y), str(filter_i.object_id), fill="red", font=font)

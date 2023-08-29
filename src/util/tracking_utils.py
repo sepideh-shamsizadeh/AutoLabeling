@@ -164,10 +164,11 @@ def get_similarity_matrix(queries, galleries, query_ids, reminded_id, galleries_
     for q_id, query in queries.items():
         if q_id in query_ids:
             sim, indices = calculate_similarity_faiss(query.visual_features, galleries)
+            rows = [0] * len(reminded_id)
             for id in reminded_id:
-                rows = [0]*len(reminded_id)
-                rows[reminded_id.index(id)] = sim[np.where(indices == id)[0]][0]
-                matrix_sim.append(rows)
+                found_id = np.where(indices == id)[0]
+                rows[reminded_id.index(id)] = sim[found_id][0]
+            matrix_sim.append(rows)
     print(matrix_sim)
     print(reminded_id)
     print(query_ids)
