@@ -223,11 +223,10 @@ def find_missed_id(filters, missed_filters, measurements, galleries,
     id_g = list(range(len(first_gallery)))
     for i in id_missed:
         missed_gallery.append(missed_filters[i].visual_features)
-    for measure_id, measure in measurements.items():
-        if int(measure_id) in id_rem:
-            queries[int(measure_id)] = creat_new_filter(measure, int(measure_id))
+    for id in id_rem:
+        queries[id] = creat_new_filter(measurements[str(id)], id)
     first_matrix = get_similarity_matrix(queries, first_gallery, id_rem, id_missed, id_g, assigned)
-    missed_matrix = get_similarity_matrix(queries, missed_gallery, id_rem, id_missed, id_g, assigned)
+    missed_matrix = get_similarity_matrix(queries, missed_gallery, id_rem, id_missed, id_missed, assigned)
     if len(first_matrix) > 0 and len(missed_matrix) > 0:
         while np.max(first_matrix) > 0.6 or np.max(missed_matrix) > 0.6:
             if len(first_matrix.shape) == 1:
