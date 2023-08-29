@@ -2,11 +2,14 @@ import os
 import ast
 import csv
 import timm
+import yaml
 from LATransformer.model import LATransformerTest
 from util.multi_people_tracking import tracking
 from util.cube_projection import CubeProjection
 from util.camera_info import get_info
 from util.assign_pose2panoramic import *
+from PIL import Image, ImageDraw, ImageFont
+
 import detect_people
 
 detection_model = detect_people.load_model()
@@ -73,7 +76,7 @@ missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(0, len(dr_spaam)):
+for i in range(17, len(dr_spaam)):
     path = '../data/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
@@ -172,3 +175,37 @@ for i in range(0, len(dr_spaam)):
         filters, missed_filters, current_id, first_gallery = tracking(
             measurements, filters, frame_num, missed_filters, current_id, first_gallery
         )
+
+        # Create a drawing object
+        draw = ImageDraw.Draw(pil_image)
+
+        # Default font for labels
+        font = ImageFont.truetype('FreeMono.ttf', 24)
+        pp_data = []
+        for filter_id, filter_i in filters.items():
+            # Draw the bounding box
+            draw.rectangle(filter_i.bounding, outline="red", width=2)
+            print('ID:' + str(filter_id))
+            print('Position:' + str(filter_i.x[:2]))
+            position = {'x': float(filter_i.x[0]), 'y': float(filter_i.x[1])}
+            pp = {'id ' + str(filter_i.object_id): position}
+            print(pp)
+            pp_data.append(pp)
+            # Calculate label positiontextsize
+            label_x = filter_i.bounding[0] + (filter_i.bounding[2] - filter_i.bounding[0]) // 2
+            label_y = filter_i.bounding[1] - 11  # Place above the bounding box
+
+            # Draw the label
+            draw.text((label_x, label_y), str(filter_i.object_id), fill="red", font=font)
+        pil_image.show()
+
+        for filter_id, filter_i in missed_filters.items():
+            print('missed ID:' + str(filter_id))
+            print('missed Position:' + str(filter_i.x[:2]))
+
+        frame = 'frame ' + str(frame_num)
+        yaml_data = {frame: pp_data}
+        output_file = 'tracks.yaml'
+        # Open the file in write mode
+        with open(output_file, 'a') as file:
+            yaml.dump(yaml_data, file)

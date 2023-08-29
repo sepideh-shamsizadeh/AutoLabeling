@@ -41,7 +41,7 @@ def get_visual_vector(image, model1, person, flag_concat):
 
 
 def handle_borders(facel, facer, sides_detected):
-    facel_pos, facer_pos = [], []
+    facel_pos, facer_pos, position = [], [], []
     if len(sides_detected[facer]['positions']) > 0:
         facer_bnd = sides_detected[facer]['bounding_boxes'][0]
         if facer_bnd[0] <= 5:
@@ -62,9 +62,10 @@ def handle_borders(facel, facer, sides_detected):
         sides_detected[facer]['positions'].pop(0)
         position = facer_pos
     else:
-        sides_detected[facel]['bounding_boxes'].pop()
-        sides_detected[facel]['positions'].pop()
-        position = facel_pos
+        if len(sides_detected[facel]['bounding_boxes']) > 0:
+            sides_detected[facel]['bounding_boxes'].pop()
+            sides_detected[facel]['positions'].pop()
+            position = facel_pos
     return sides_detected, position
 
 
