@@ -255,12 +255,15 @@ def find_missed_id(filters, missed_filters, measurements, galleries,
                     assigned.append(id_rem[max_col1])
                     ids2remove1.append(id_rem[max_col1])
                     ids2remove2.append(id_missed[max_row2])
-        for id1 in ids2remove1:
-            id_rem.remove(id1)
-        for id2 in ids2remove2:
-            id_missed.remove(id2)
-            missed_filters.pop(id_missed[max_row2])
-            print('find id' + str(id2))
+        if len(ids2remove1) > 0:
+            for id1 in ids2remove1:
+                id_rem.remove(id1)
+        if len(ids2remove2) > 0:
+            for id2 in ids2remove2:
+                if id2 in missed_filters:
+                    id_missed.remove(id2)
+                    missed_filters.pop(id2)
+                    print('find id' + str(id2))
     for id in id_rem:
         filter_i = creat_new_filter(measurements[str(id)], current_id)
         filters[current_id] = filter_i
