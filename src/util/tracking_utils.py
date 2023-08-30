@@ -176,60 +176,6 @@ def get_similarity_matrix(queries, galleries, query_ids, reminded_id, galleries_
     return matrix
 
 
-def check_similarity_matrix(filters, measurements, id_rem, assigned, assigned_filters, missed_id, galleries, id_g,
-                            missed_filters, current_id, first_gallery):
-    ids2remove1 = []
-    ids2remove2 = []
-    if len(id_rem) > 0:
-        matrix = get_similarity_matrix(filters, galleries, missed_id, id_rem, id_g, assigned)
-        while np.max(matrix) > 0:
-            if len(matrix.shape) == 1:
-                max_row, max_col = 0, 0
-            else:
-                max_index = np.argmax(matrix)
-                max_row, max_col = np.unravel_index(max_index, matrix.shape)
-            print(max_row, max_col)
-            if missed_id[max_row] not in assigned_filters:
-                if len(missed_filters) == 0:
-                    if matrix[max_row, max_col] > 0.5:
-                        print(matrix[max_row, max_col])
-                        assigned.append(id_rem[max_col])
-                        filters[missed_id[max_row]].update(measurements[str(id_rem[max_col])]['position'][0])
-                        filters[missed_id[max_row]].visual_features = \
-                            measurements[str(id_rem[max_col])]['visual_features'][0]
-                        filters[missed_id[max_row]].bounding = measurements[str(id_rem[max_col])]['bounding_box'][0]
-                        matrix[max_row, :] = 0
-                        matrix[:, max_col] = 0
-                        ids2remove1.append(id_rem[max_col])
-                        ids2remove2.append(missed_id[max_row])
-                        assigned_filters.append(missed_id[max_row])
-                elif len(missed_filters) > 0:
-                    filters, missed_filters, attached, assigned_filters, first_gallery, id_rem = find_missed_id(
-                        filters, missed_filters, measurements, galleries,
-                        assigned, id_rem, current_id, first_gallery, assigned_filters, 0.95
-                    )
-                    if len(attached) == len(assigned):
-                        if matrix[max_row, max_col] > 0.95:
-                            print(matrix[max_row, max_col])
-                            assigned.append(id_rem[max_col])
-                            filters[missed_id[max_row]].update(measurements[str(id_rem[max_col])]['position'][0])
-                            filters[missed_id[max_row]].visual_features = \
-                                measurements[str(id_rem[max_col])]['visual_features'][0]
-                            filters[missed_id[max_row]].bounding = measurements[str(id_rem[max_col])]['bounding_box'][0]
-                            matrix[max_row, :] = 0
-                            matrix[:, max_col] = 0
-                            ids2remove1.append(id_rem[max_col])
-                            ids2remove2.append(missed_id[max_row])
-                            assigned_filters.append(missed_id[max_row])
-                        else:
-                            matrix[max_row, max_col] = 0
-                    assigned = attached
-    for id in ids2remove1:
-        id_rem.remove(id)
-    for id in ids2remove2:
-        missed_id.remove(id)
-    return filters, id_rem, assigned, assigned_filters, missed_id
-
 
 def find_missed_id(filters, missed_filters, measurements, galleries,
                    assigned, id_rem, current_id, first_gallery, assigned_filters, threshold):
