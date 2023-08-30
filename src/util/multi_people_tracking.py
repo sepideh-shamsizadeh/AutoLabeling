@@ -28,15 +28,21 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id, first
 
         if len(missed_ids) > 0:
             filters, id_rem, assigned, assigned_filters, missed_id = check_similarity_matrix(
-                filters, measurements, id_rem, attached, assigned_filters, missed_ids, galleries, id_g
+                filters, measurements, id_rem, attached, assigned_filters, missed_ids, galleries, id_g, missed_filters,
+                current_id, first_gallery
             )
             filters, missed_filters = add_loss_of_id(filters, missed_ids, missed_filters)
 
         if len(id_rem) > 0:
-            filters, missed_filters, attached, assigned_filters, first_gallery = find_missed_id(
+            filters, missed_filters, attached, assigned_filters, first_gallery, id_rem = find_missed_id(
                 filters, missed_filters, measurements, galleries,
-                attached, id_rem, current_id, first_gallery, assigned_filters
+                attached, id_rem, current_id, first_gallery, assigned_filters, 0.65
             )
+            for id in id_rem:
+                filter_i = creat_new_filter(measurements[str(id)], current_id)
+                filters[current_id] = filter_i
+                first_gallery[current_id] = measurements['visual_features'][0]
+                current_id += 1
     print('frame number:' + str(frame_num))
 
     return filters, missed_filters, current_id, first_gallery
