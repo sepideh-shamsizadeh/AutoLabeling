@@ -18,7 +18,6 @@ R = np.eye(num_measurements) * measurement_noise_variance
 # Set initial state and covariance matrix
 initial_covariance = np.eye(num_states) * 1.0  # Initial covariance matrix
 
-
 def state_transition_fn(x, dt):
     # Implement the state transition function
     # x: current state vector [x, y, vx, vy]
@@ -43,7 +42,7 @@ def global_nearest_neighbor(reference_points, query_points, covariance_matrix, i
     if len(reference_points) > 0 and len(query_points) > 0:
         distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
         for i, dis in zip(ids, distances):
-            if dis <= 0.7:
+            if dis <= 1.5:
                 neighbors.append(i)
     return neighbors
 
@@ -124,8 +123,8 @@ def get_id(ids, assigned, id_g):
 
 def find_tracker_newF(filter_i, positions, measurements, dt, assigned, id_g):
     ids = []
-    filter_i.predict(dt=dt)
     neighbors = []
+    filter_i.predict(dt=dt)
     found_id = -1
     if len(positions) > 0:
         neighbors = get_neighbors(positions, filter_i, id_g, measurements)
@@ -147,7 +146,7 @@ def check_neighbours(filters, measurements, id_rem, assigned, positions, galleri
     missed_id = []
     for filter_id, filter_i in filters.items():
         id_f = find_tracker_newF(filter_i, positions, measurements, dt, assigned, id_g)
-        if id_f > -1:
+        if id_f in id_rem:
             assigned.append(id_f)
             id_rem.remove(id_f)
             filter_i.update(measurements[str(id_f)]['position'][0])
@@ -175,7 +174,17 @@ def get_similarity_matrix(queries, galleries, query_ids, reminded_id, galleries_
     matrix = np.array(matrix_sim)
     return matrix
 
-
+def update_filter(measure, filters, id_f, id_m, first_matrix, missed_matrix, row, col, assigned, ids2remove1, ids2remove2):
+    filter_i = creat_new_filter(measure, id_f)
+    filters[id_f] = filter_i
+    missed_matrix[row, :] = 0
+    missed_matrix[:, col] = 0
+    first_matrix[row, :] = 0
+    first_matrix[:, col] = 0
+    assigned.append(id_m)
+    ids2remove1.append(id_m)
+    ids2remove2.append(id_f)
+    return filters, assigned, ids2remove1, ids2remove2, first_matrix, missed_matrix
 
 def find_missed_id(filters, missed_filters, measurements, galleries,
                    assigned, id_rem, current_id, first_gallery, assigned_filters, threshold):
@@ -195,32 +204,29 @@ def find_missed_id(filters, missed_filters, measurements, galleries,
         missed_matrix = get_similarity_matrix(queries, missed_gallery, id_rem, id_missed, id_missed, assigned)
         if len(first_matrix) > 0 and len(missed_matrix) > 0:
             while np.max(first_matrix) > threshold or np.max(missed_matrix) > threshold:
-                if len(first_matrix.shape) == 1:
-                    max_row1, max_col1 = 0, 0
-                else:
+                if np.max(first_matrix) > np.max(missed_matrix):
                     max_index1 = np.argmax(first_matrix)
                     max_row1, max_col1 = np.unravel_index(max_index1, first_matrix.shape)
-                max_row2 = np.argmax(missed_matrix[:, max_col1])
-                if first_matrix[max_row1, max_col1] > missed_matrix[max_row2, max_col1]:
-                    filter_i = creat_new_filter(measurements[str(id_rem[max_row1])], id_missed[max_col1])
-                    filters[id_missed[max_col1]] = filter_i
-                    first_matrix[max_row1, :] = 0
-                    first_matrix[:, max_col1] = 0
-                    missed_matrix[max_row1, :] = 0
-                    missed_matrix[:, max_col1] = 0
-                    assigned.append(id_rem[max_row1])
-                    ids2remove1.append(id_rem[max_row1])
-                    ids2remove2.append(id_missed[max_col1])
+                    max_row2 = np.argmax(missed_matrix[:, max_col1])
+                    max1 = first_matrix[max_row1, max_col1]
+                    max2 = missed_matrix[max_row2, max_col1]
                 else:
-                    filter_i = creat_new_filter(measurements[str(id_rem[max_row2])], id_missed[max_col1])
-                    filters[id_missed[max_col1]] = filter_i
-                    first_matrix[max_row2, :] = 0
-                    first_matrix[:, max_col1] = 0
-                    missed_matrix[max_row2, :] = 0
-                    missed_matrix[:, max_col1] = 0
-                    assigned.append(id_rem[max_row2])
-                    ids2remove1.append(id_rem[max_row2])
-                    ids2remove2.append(id_missed[max_col1])
+                    max_index1 = np.argmax(missed_matrix)
+                    max_row1, max_col1 = np.unravel_index(max_index1, missed_matrix.shape)
+                    max_row2 = np.argmax(first_matrix[:, max_col1])
+                    max1 = missed_matrix[max_row1, max_col1]
+                    max2 = first_matrix[max_row2, max_col1]
+
+                if max1 >= max2:
+                    filters, assigned, ids2remove1, ids2remove2, first_matrix, missed_matrix = update_filter(
+                        measurements[str(id_rem[max_row1])], filters, id_missed[max_col1], id_rem[max_row1],
+                        first_matrix, missed_matrix, max_row1, max_col1, assigned, ids2remove1, ids2remove2
+                    )
+                else:
+                    filters, assigned, ids2remove1, ids2remove2, first_matrix, missed_matrix = update_filter(
+                        measurements[str(id_rem[max_row2])], filters, id_missed[max_col1], id_rem[max_row2],
+                        first_matrix, missed_matrix, max_row2, max_col1, assigned, ids2remove1, ids2remove2
+                    )
         if len(ids2remove1) > 0:
             for id1 in ids2remove1:
                 id_rem.remove(id1)
