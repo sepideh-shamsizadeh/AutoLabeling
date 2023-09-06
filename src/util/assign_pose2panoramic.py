@@ -67,7 +67,16 @@ def handle_borders(facel, facer, sides_detected):
             sides_detected[facel]['positions'].pop()
             position = facel_pos
     else:
-        if (480 - facel_bnd[2]) < facer_bnd[0]:
+        if len(facel_bnd) > 0 and len(facer_bnd) > 0:
+            if (480 - facel_bnd[2]) < facer_bnd[0]:
+                sides_detected[facel]['bounding_boxes'].pop()
+                position = sides_detected[facel]['positions'][-1]
+                sides_detected[facel]['positions'].pop()
+            else:
+                sides_detected[facer]['bounding_boxes'].pop(0)
+                position = sides_detected[facer]['positions'][0]
+                sides_detected[facer]['positions'].pop(0)
+        elif len(facel_bnd) > 0:
             sides_detected[facel]['bounding_boxes'].pop()
             position = sides_detected[facel]['positions'][-1]
             sides_detected[facel]['positions'].pop()
@@ -75,7 +84,6 @@ def handle_borders(facel, facer, sides_detected):
             sides_detected[facer]['bounding_boxes'].pop(0)
             position = sides_detected[facer]['positions'][0]
             sides_detected[facer]['positions'].pop(0)
-
     return sides_detected, position
 
 
