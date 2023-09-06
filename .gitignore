@@ -68,6 +68,21 @@ src/auto_calibration_tools/scripts/calibration_data_intrinsics/images_UHD2/
 src/auto_calibration_tools/scripts/calibration_data_intrinsics/intrinsicsUHD.pkl
 src/auto_calibration_tools/scripts/camera_laser_calibration/backgrounds_UHD/sides/
 src/auto_calibration_tools/scripts/camera_laser_calibration/cameraLaser_pointsUHD.pkl
+ICRA2024-20230904T095336Z-001.zip
+ICRA2024-20230904T095336Z-001/
+ICRA2024-20230904T121756Z-002.zip
+refollowupforthesispublication.zip
+src/auto_calibration_tools/scripts/calibrateLaser2CameraPolar.py
+src/auto_calibration_tools/scripts/cameraLaser_pointsUHD.pkl
+src/auto_calibration_tools/scripts/cameraLaser_pointsUHD_indoor.pkl
+src/auto_calibration_tools/scripts/cameraLaser_pointsUHD_pano.pkl
+src/auto_calibration_tools/scripts/cube_projection_LB.py
+src/auto_calibration_tools/scripts/intrinsics.pkl
+src/auto_calibration_tools/scripts/intrinsicsUHD.pkl
+src/auto_calibration_tools/scripts/intrinsicsUHD_pano.pkl
+src/auto_calibration_tools/scripts/snippets.txt
+src/auto_calibration_tools/scripts/temporary.py
+
 
 
 .ignore.swp

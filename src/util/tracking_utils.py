@@ -174,9 +174,11 @@ def get_similarity_matrix(queries, galleries, query_ids, reminded_id, galleries_
     matrix = np.array(matrix_sim)
     return matrix
 
-def update_filter(measure, filters, id_f, id_m, first_matrix, missed_matrix, row, col, assigned, ids2remove1, ids2remove2):
-    filter_i = creat_new_filter(measure, id_f)
-    filters[id_f] = filter_i
+def update_filter(missed_filters, measure, filters, id_f, id_m, first_matrix, missed_matrix, row, col, assigned, ids2remove1, ids2remove2):
+    missed_filters[id_f].update(measure['position'][0])
+    filters[id_f] = missed_filters[id_f]
+    filters[id_f].visual_features = measure['visual_features'][0]
+    filters[id_f].bounding = measure['bounding_box'][0]
     missed_matrix[row, :] = 0
     missed_matrix[:, col] = 0
     first_matrix[row, :] = 0
@@ -219,12 +221,12 @@ def find_missed_id(filters, missed_filters, measurements, galleries,
 
                 if max1 >= max2:
                     filters, assigned, ids2remove1, ids2remove2, first_matrix, missed_matrix = update_filter(
-                        measurements[str(id_rem[max_row1])], filters, id_missed[max_col1], id_rem[max_row1],
+                        missed_filters,measurements[str(id_rem[max_row1])], filters, id_missed[max_col1], id_rem[max_row1],
                         first_matrix, missed_matrix, max_row1, max_col1, assigned, ids2remove1, ids2remove2
                     )
                 else:
                     filters, assigned, ids2remove1, ids2remove2, first_matrix, missed_matrix = update_filter(
-                        measurements[str(id_rem[max_row2])], filters, id_missed[max_col1], id_rem[max_row2],
+                        missed_filters, measurements[str(id_rem[max_row2])], filters, id_missed[max_col1], id_rem[max_row2],
                         first_matrix, missed_matrix, max_row2, max_col1, assigned, ids2remove1, ids2remove2
                     )
         if len(ids2remove1) > 0:
