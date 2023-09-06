@@ -35,13 +35,13 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id, first
             missed_filters, missed_ids, id_rem, id_g, attached, assigned_filters = check_neighbours(
                 missed_filters, measurements, id_rem, attached, positions, galleries, id_g
             )
-
+            id_remove = []
             for id in m_id:
                 if id not in missed_ids:
                     filters[id] = missed_filters[id]
-                    missed_filters.pop(id)
-            # for ids in missed_ids:
-            #     m_id.remove(ids)
+                    id_remove.append(id)
+            for ids in id_remove:
+                missed_filters.pop(ids)
         if len(id_rem) > 0:
             filters, missed_filters, attached, assigned_filters, first_gallery, id_rem = find_missed_id(
                 filters, missed_filters, measurements, galleries,

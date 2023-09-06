@@ -76,7 +76,7 @@ missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(0, len(dr_spaam)):
+for i in range(26, len(dr_spaam)):
     path = '../data/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {

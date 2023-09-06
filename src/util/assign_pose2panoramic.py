@@ -138,6 +138,7 @@ def check_people_intersection(j, sorted_people):
 
 
 def assign_pose2panoramic(image, org_detected, sides_detected, model1):
+    width, height = image.size
     people_detected = {}
     sorted_people = sorted(org_detected, key=lambda
         x: x[0])
@@ -147,14 +148,14 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
         flag_concat = False
         no_intersection = True
         person = sorted_people[j]
-        if 0 <= person[0] < 240:
-            if 0 <= person[2] < 240:
+        if 0 <= person[0] < int(width/8):
+            if 0 <= person[2] < int(width/8):
                 pos = sides_detected['back']['positions'][0]
                 bnd = sides_detected['back']['bounding_boxes']
                 for i, back in enumerate(bnd):
-                    if 0 <= back[0] < 240:
-                        if 240 <= back[2] < 480:
-                            if 1680 <= sorted_people[-1][0] <= 1920:
+                    if 0 <= back[0] < int(width/8):
+                        if int(width/8) <= back[2] < width/4:
+                            if int(3*width/4 + width/8) <= sorted_people[-1][0] <= width:
                                 pos = sides_detected['back']['positions'].pop(i)
                                 sides_detected['back']['bounding_boxes'].pop(i)
                                 flag_concat = True
@@ -176,22 +177,23 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         sides_detected['back']['positions'].pop(0)
                         sides_detected['back']['bounding_boxes'].pop(0)
                     j += 1
-            elif 240 < person[2] < 720:
+            elif int(width/8) < person[2] < int(width/4+width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
                 if no_intersection:
                     sides_detected, pos = handle_borders('back', 'left', sides_detected)
                 else:
-                    sides_detected['back']['bounding_boxes'].pop(0)
-                    pos = sides_detected['back']['positions'][0]
-                    sides_detected['back']['positions'].pop(0)
+                    if len(sides_detected['back']['bounding_boxes']) > 0:
+                        sides_detected['back']['bounding_boxes'].pop(0)
+                        pos = sides_detected['back']['positions'][0]
+                        sides_detected['back']['positions'].pop(0)
                 if len(pos) > 0:
                     people_detected = assign_pose2person(
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
                 j += 1
-        elif 240 <= person[0] < 720:
-            if 240 <= person[2] < 720:
+        elif int(width/8) <= person[0] < int(width/4+width/8):
+            if int(width/8) <= person[2] < int(width/4+width/8):
                 if len(sides_detected['left']['bounding_boxes']) > 0:
                     bnd = sides_detected['left']['bounding_boxes'][0]
                     pos = sides_detected['left']['positions'][0]
@@ -202,22 +204,23 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     sides_detected['left']['positions'].pop(0)
                     sides_detected['left']['bounding_boxes'].pop(0)
                 j += 1
-            elif 720 <= person[2] < 1200:
+            elif int(width/4+width/8) <= person[2] < int(width/2 + width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
                 if no_intersection:
                     sides_detected, pos = handle_borders('left', 'front', sides_detected)
                 else:
-                    sides_detected['left']['bounding_boxes'].pop(0)
-                    pos = sides_detected['left']['positions'][0]
-                    sides_detected['left']['positions'].pop(0)
+                    if len(sides_detected['left']['bounding_boxes']) > 0:
+                        sides_detected['left']['bounding_boxes'].pop(0)
+                        pos = sides_detected['left']['positions'][0]
+                        sides_detected['left']['positions'].pop(0)
                 if len(pos) > 0:
                     people_detected = assign_pose2person(
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
                 j += 1
-        elif 720 <= person[0] < 1200:
-            if 720 <= person[2] < 1200:
+        elif int(width/4+width/8) <= person[0] < int(width/2 + width/8):
+            if int(width/4+width/8) <= person[2] < int(width/2 + width/8):
                 if len(sides_detected['front']['bounding_boxes']) > 0:
                     bnd = sides_detected['front']['bounding_boxes'][0]
                     pos = sides_detected['front']['positions'][0]
@@ -229,22 +232,23 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     sides_detected['front']['positions'].pop(0)
                     sides_detected['front']['bounding_boxes'].pop(0)
                 j += 1
-            elif 1200 <= person[2] < 1680:
+            elif int(width/2 + width/8) <= person[2] < int(3*width/4 + width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
                 if no_intersection:
                     sides_detected, pos = handle_borders('front', 'right', sides_detected)
                 else:
-                    sides_detected['front']['bounding_boxes'].pop(0)
-                    pos = sides_detected['front']['positions'][0]
-                    sides_detected['front']['positions'].pop(0)
+                    if len(sides_detected['front']['bounding_boxes']) > 0:
+                        sides_detected['front']['bounding_boxes'].pop(0)
+                        pos = sides_detected['front']['positions'][0]
+                        sides_detected['front']['positions'].pop(0)
                 if len(pos) > 0:
                     people_detected = assign_pose2person(
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
                 j += 1
-        elif 1200 <= person[0] < 1680:
-            if 1200 <= person[2] < 1680:
+        elif int(width/2 + width/8) <= person[0] < int(3*width/4 + width/8):
+            if int(width/2 + width/8) <= person[2] < int(3*width/4 + width/8):
                 if len(sides_detected['right']['bounding_boxes']) > 0:
                     bnd = sides_detected['right']['bounding_boxes'][0]
                     pos = sides_detected['right']['positions'][0]
@@ -256,21 +260,22 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     sides_detected['right']['positions'].pop(0)
                     sides_detected['right']['bounding_boxes'].pop(0)
                 j += 1
-            elif 1680 <= person[2] < 1920:
+            elif int(3*width/4 + width/8) <= person[2] < width:
                 no_intersection = check_people_intersection(j, sorted_people)
                 if no_intersection:
                     sides_detected, pos = handle_borders('right', 'back', sides_detected)
                 else:
-                    sides_detected['right']['bounding_boxes'].pop(0)
-                    pos = sides_detected['right']['positions'][0]
-                    sides_detected['right']['positions'].pop(0)
+                    if len(sides_detected['right']['bounding_boxes']) > 0:
+                        sides_detected['right']['bounding_boxes'].pop(0)
+                        pos = sides_detected['right']['positions'][0]
+                        sides_detected['right']['positions'].pop(0)
                 if len(pos) > 0:
                     people_detected = assign_pose2person(
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
                 j += 1
-        elif 1680 <= person[0] <= 1920:
+        elif int(3*width/4 + width/8) <= person[0] <= width:
             if len(sides_detected['back']['bounding_boxes']) > 0:
                 bnd = sides_detected['back']['bounding_boxes'][0]
                 pos = sides_detected['back']['positions'][0]
