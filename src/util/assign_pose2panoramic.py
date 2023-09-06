@@ -172,8 +172,9 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     bnd = sides_detected['left']['bounding_boxes'][0]
                     pos = sides_detected['left']['positions'][0]
                     people_detected = assign_pose2person(
-                        people_detected, j, person, image, pos, model1, flag_concat
+                        people_detected, k, person, image, pos, model1, flag_concat
                     )
+                    k += 1
                     sides_detected['left']['positions'].pop(0)
                     sides_detected['left']['bounding_boxes'].pop(0)
                 j += 1
