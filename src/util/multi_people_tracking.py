@@ -30,6 +30,19 @@ def tracking(measurements, filters, frame_num, missed_filters, current_id, first
         filters, missed_filters = add_loss_of_id(filters, missed_ids, missed_filters)
         # Here if there be a value in our measurement and didn't assign to our ID's it checked in missed id's
         if len(id_rem) > 0:
+            m_id = missed_filters.keys()
+            # First check all neighbours with radius 0.7 meter and visual feature for neighbours with threshold 0.95
+            missed_filters, missed_ids, id_rem, id_g, attached, assigned_filters = check_neighbours(
+                missed_filters, measurements, id_rem, attached, positions, galleries, id_g
+            )
+
+            for id in m_id:
+                if id not in missed_ids:
+                    filters[id] = missed_filters[id]
+                    missed_filters.pop(id)
+            # for ids in missed_ids:
+            #     m_id.remove(ids)
+        if len(id_rem) > 0:
             filters, missed_filters, attached, assigned_filters, first_gallery, id_rem = find_missed_id(
                 filters, missed_filters, measurements, galleries,
                 attached, id_rem, current_id, first_gallery, assigned_filters, 0.5

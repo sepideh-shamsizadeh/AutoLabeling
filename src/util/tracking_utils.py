@@ -136,7 +136,7 @@ def find_tracker_newF(filter_i, positions, measurements, dt, assigned, id_g):
         for index in indices:
             ids.append(neighbors[index])
         found_id = get_id(ids, assigned, id_g)
-        if sim[0] < 0.9:
+        if sim[0] < 0.95:
             found_id = -1
     return found_id
 
