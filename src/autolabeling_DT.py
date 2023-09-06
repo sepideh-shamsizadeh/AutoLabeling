@@ -76,7 +76,7 @@ missed_filters = {}
 missed_ids = []
 # for i in range(36, int(len(scan)/2)):
 current_id = 0
-for i in range(57, len(dr_spaam)):
+for i in range(58, len(dr_spaam)):
     path = '../data/image_' + str(i) + '.jpg'
     print(path)
     dsides = {'back': {
@@ -127,7 +127,6 @@ for i in range(57, len(dr_spaam)):
                 dsides[face]['bounding_boxes'] = sorted_detected
                 if face == 'back':
                     pose = []
-
                     XY = selected_point(back_xy, back, back_info, face, sorted_detected, cv_image)
                     for kk, xy in enumerate(XY):
                         if xy[0] != 0 or xy[1] != 0:

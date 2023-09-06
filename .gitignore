@@ -86,3 +86,4 @@ src/auto_calibration_tools/scripts/temporary.py
 
 
 .ignore.swp
+.gitignore.save
