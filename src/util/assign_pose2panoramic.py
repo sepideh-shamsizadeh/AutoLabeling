@@ -192,6 +192,14 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
+                else:
+                    if len(sides_detected['left']['bounding_boxes']) > 0:
+                        bnd = sides_detected['left']['bounding_boxes'][0]
+                        pos = sides_detected['left']['positions'][0]
+                        people_detected = assign_pose2person(
+                            people_detected, k, person, image, pos, model1, flag_concat
+                        )
+                        k += 1
                 j += 1
         elif int(width/8) <= person[0] < int(width/4+width/8):
             if int(width/8) <= person[2] < int(width/4+width/8):
@@ -220,6 +228,14 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
+                else:
+                    if len(sides_detected['front']['bounding_boxes']) > 0:
+                        bnd = sides_detected['front']['bounding_boxes'][0]
+                        pos = sides_detected['front']['positions'][0]
+                        people_detected = assign_pose2person(
+                            people_detected, k, person, image, pos, model1, flag_concat
+                        )
+                        k += 1
                 j += 1
         elif int(width/4+width/8) <= person[0] < int(width/2 + width/8):
             if int(width/4+width/8) <= person[2] < int(width/2 + width/8):
@@ -249,6 +265,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
+                else:
+                    if len(sides_detected['right']['bounding_boxes']) > 0:
+                        sides_detected['right']['bounding_boxes'].pop(0)
+                        pos = sides_detected['right']['positions'][0]
+                        sides_detected['right']['positions'].pop(0)
+                        people_detected = assign_pose2person(
+                            people_detected, k, person, image, pos, model1, flag_concat
+                        )
+                        k += 1
                 j += 1
         elif int(width/2 + width/8) <= person[0] < int(3*width/4 + width/8):
             if int(width/2 + width/8) <= person[2] < int(3*width/4 + width/8):
@@ -278,6 +303,15 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                         people_detected, k, person, image, pos, model1, flag_concat
                     )
                     k += 1
+                else:
+                    if len(sides_detected['back']['bounding_boxes']) > 0:
+                        sides_detected['back']['bounding_boxes'].pop(0)
+                        pos = sides_detected['back']['positions'][0]
+                        sides_detected['back']['positions'].pop(0)
+                        people_detected = assign_pose2person(
+                            people_detected, k, person, image, pos, model1, flag_concat
+                        )
+                        k += 1
                 j += 1
         elif int(3*width/4 + width/8) <= person[0] <= width:
             if len(sides_detected['back']['bounding_boxes']) > 0:

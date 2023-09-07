@@ -42,7 +42,7 @@ def global_nearest_neighbor(reference_points, query_points, covariance_matrix, i
     if len(reference_points) > 0 and len(query_points) > 0:
         distances = cdist(reference_points, query_points, lambda u, v: mahalanobis(u, v, covariance_matrix))
         for i, dis in zip(ids, distances):
-            if dis <= 1.5:
+            if dis <= 1:
                 neighbors.append(i)
     return neighbors
 
@@ -134,7 +134,10 @@ def find_tracker_newF(filter_i, positions, measurements, dt, assigned, id_g):
             gallery.append(measurements[str(neighbor)]['visual_features'][0])
         sim, indices = calculate_similarity_faiss(filter_i.visual_features, gallery)
         for index in indices:
-            ids.append(neighbors[index])
+            if index >-1:
+                ids.append(neighbors[index])
+            else:
+                break
         found_id = get_id(ids, assigned, id_g)
         if sim[0] < 0.95:
             found_id = -1
