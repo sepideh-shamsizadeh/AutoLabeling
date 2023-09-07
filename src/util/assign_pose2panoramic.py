@@ -179,6 +179,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                     j += 1
             elif int(width/8) < person[2] < int(width/4+width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
+                pos = []
                 if no_intersection:
                     sides_detected, pos = handle_borders('back', 'left', sides_detected)
                 else:
@@ -206,6 +207,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif int(width/4+width/8) <= person[2] < int(width/2 + width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
+                pos = []
                 if no_intersection:
                     sides_detected, pos = handle_borders('left', 'front', sides_detected)
                 else:
@@ -234,6 +236,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif int(width/2 + width/8) <= person[2] < int(3*width/4 + width/8):
                 no_intersection = check_people_intersection(j, sorted_people)
+                pos = []
                 if no_intersection:
                     sides_detected, pos = handle_borders('front', 'right', sides_detected)
                 else:
@@ -262,6 +265,7 @@ def assign_pose2panoramic(image, org_detected, sides_detected, model1):
                 j += 1
             elif int(3*width/4 + width/8) <= person[2] < width:
                 no_intersection = check_people_intersection(j, sorted_people)
+                pos = []
                 if no_intersection:
                     sides_detected, pos = handle_borders('right', 'back', sides_detected)
                 else:
